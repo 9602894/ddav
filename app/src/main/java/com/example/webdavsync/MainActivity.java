@@ -3,15 +3,13 @@ package com.example.webdavsync;
 import android.Manifest;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.view.View;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,17 +20,11 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final int REQUEST_PERMISSIONS = 100;
     private EditText etServerUrl, etUsername, etPassword, etLocalPath;
-    private Button btnTest, btnSync, btnSave;
-    private ProgressBar progressBar;
-    private TextView tvStatus;
-
-    private SharedPreferences sharedPreferences;
-    private static final String PREF_NAME = "WebDAVConfig";
-    private static final String KEY_SERVER = "server_url";
-    private static final String KEY_USERNAME = "username";
-    private static final String KEY_PASSWORD = "password";
-    private static final String KEY_LOCAL_PATH = "local_path";
+    private Button btnTest, btnSync, btnBrowse;
+    private SharedPreferences prefs;
+    private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,174 +37,139 @@ public class MainActivity extends AppCompatActivity {
         etLocalPath = findViewById(R.id.et_local_path);
         btnTest = findViewById(R.id.btn_test);
         btnSync = findViewById(R.id.btn_sync);
-        btnSave = findViewById(R.id.btn_save);
-        progressBar = findViewById(R.id.progress_bar);
-        tvStatus = findViewById(R.id.tv_status);
+        btnBrowse = findViewById(R.id.btn_browse);
 
-        sharedPreferences = getSharedPreferences(PREF_NAME, MODE_PRIVATE);
-        loadConfig();
+        prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
+        loadSettings();
 
-        // 请求存储权限（Android 6.0+）
+        // 请求权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            String[] perms = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+                ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
             }
         }
 
-        btnSave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                saveConfig();
-                Toast.makeText(MainActivity.this, "配置已保存", Toast.LENGTH_SHORT).show();
-            }
-        });
+        // 保存配置（输入变化时自动保存）
+        android.text.TextWatcher watcher = new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(android.text.Editable s) { saveSettings(); }
+        };
+        etServerUrl.addTextChangedListener(watcher);
+        etUsername.addTextChangedListener(watcher);
+        etPassword.addTextChangedListener(watcher);
+        etLocalPath.addTextChangedListener(watcher);
 
-        btnTest.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String serverUrl = etServerUrl.getText().toString().trim();
-                String username = etUsername.getText().toString().trim();
-                String password = etPassword.getText().toString().trim();
-                if (serverUrl.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "请输入服务器地址", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                progressBar.setVisibility(View.VISIBLE);
-                tvStatus.setText("测试连接中...");
-                new TestConnectionTask().execute(serverUrl, username, password);
-            }
-        });
-
-        btnSync.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String serverUrl = etServerUrl.getText().toString().trim();
-                String username = etUsername.getText().toString().trim();
-                String password = etPassword.getText().toString().trim();
-                String localPath = etLocalPath.getText().toString().trim();
-                if (serverUrl.isEmpty() || localPath.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "请填写服务器地址和本地路径", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                File localDir = new File(localPath);
-                if (!localDir.exists() || !localDir.isDirectory()) {
-                    Toast.makeText(MainActivity.this, "本地路径无效或不是目录", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                progressBar.setVisibility(View.VISIBLE);
-                tvStatus.setText("同步中...");
-                new SyncTask().execute(serverUrl, username, password, localPath);
-            }
+        btnTest.setOnClickListener(v -> testConnection());
+        btnSync.setOnClickListener(v -> startSync());
+        btnBrowse.setOnClickListener(v -> {
+            // 简单提示，可扩展为文件夹选择器
+            Toast.makeText(this, "请手动输入路径，如 /sdcard/Download", Toast.LENGTH_SHORT).show();
         });
     }
 
-    private void loadConfig() {
-        etServerUrl.setText(sharedPreferences.getString(KEY_SERVER, ""));
-        etUsername.setText(sharedPreferences.getString(KEY_USERNAME, ""));
-        etPassword.setText(sharedPreferences.getString(KEY_PASSWORD, ""));
-        etLocalPath.setText(sharedPreferences.getString(KEY_LOCAL_PATH,
-                Environment.getExternalStorageDirectory().getAbsolutePath() + "/Download"));
+    private void loadSettings() {
+        etServerUrl.setText(prefs.getString("server_url", ""));
+        etUsername.setText(prefs.getString("username", ""));
+        etPassword.setText(prefs.getString("password", ""));
+        etLocalPath.setText(prefs.getString("local_path", Environment.getExternalStorageDirectory() + "/Download"));
     }
 
-    private void saveConfig() {
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putString(KEY_SERVER, etServerUrl.getText().toString().trim());
-        editor.putString(KEY_USERNAME, etUsername.getText().toString().trim());
-        editor.putString(KEY_PASSWORD, etPassword.getText().toString().trim());
-        editor.putString(KEY_LOCAL_PATH, etLocalPath.getText().toString().trim());
+    private void saveSettings() {
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString("server_url", etServerUrl.getText().toString().trim());
+        editor.putString("username", etUsername.getText().toString().trim());
+        editor.putString("password", etPassword.getText().toString().trim());
+        editor.putString("local_path", etLocalPath.getText().toString().trim());
         editor.apply();
     }
 
-    // 测试连接 AsyncTask
-    private class TestConnectionTask extends AsyncTask<String, Void, Boolean> {
-        @Override
-        protected Boolean doInBackground(String... params) {
-            WebDAVClient client = new WebDAVClient(params[0], params[1], params[2]);
-            return client.testConnection();
+    private void testConnection() {
+        String serverUrl = etServerUrl.getText().toString().trim();
+        String username = etUsername.getText().toString().trim();
+        String password = etPassword.getText().toString().trim();
+
+        if (serverUrl.isEmpty()) {
+            Toast.makeText(this, "请输入服务器地址", Toast.LENGTH_SHORT).show();
+            return;
         }
 
-        @Override
-        protected void onPostExecute(Boolean success) {
-            progressBar.setVisibility(View.GONE);
-            if (success) {
-                tvStatus.setText("连接成功！");
-                Toast.makeText(MainActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
-            } else {
-                tvStatus.setText("连接失败");
-                Toast.makeText(MainActivity.this, "连接失败，请检查配置", Toast.LENGTH_SHORT).show();
-            }
-        }
+        Toast.makeText(this, "测试连接中...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            WebDAVClient client = new WebDAVClient(serverUrl, username, password);
+            boolean success = client.testConnection();
+            mainHandler.post(() -> {
+                if (success) {
+                    Toast.makeText(MainActivity.this, "连接成功！", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "连接失败，请检查配置", Toast.LENGTH_LONG).show();
+                }
+            });
+        }).start();
     }
 
-    // 同步 AsyncTask
-    private class SyncTask extends AsyncTask<String, String, Boolean> {
-        private int totalFiles = 0;
-        private int uploaded = 0;
-        private String statusMsg = "";
+    private void startSync() {
+        String serverUrl = etServerUrl.getText().toString().trim();
+        String username = etUsername.getText().toString().trim();
+        String password = etPassword.getText().toString().trim();
+        String localPath = etLocalPath.getText().toString().trim();
 
-        @Override
-        protected Boolean doInBackground(String... params) {
-            String serverUrl = params[0];
-            String username = params[1];
-            String password = params[2];
-            String localPath = params[3];
+        if (serverUrl.isEmpty() || localPath.isEmpty()) {
+            Toast.makeText(this, "请填写完整配置", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
+        File dir = new File(localPath);
+        if (!dir.exists() || !dir.isDirectory()) {
+            Toast.makeText(this, "本地目录不存在或不是目录", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        File[] files = dir.listFiles();
+        if (files == null || files.length == 0) {
+            Toast.makeText(this, "本地目录为空，没有文件可同步", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Toast.makeText(this, "开始同步，共 " + files.length + " 个文件", Toast.LENGTH_SHORT).show();
+
+        new Thread(() -> {
             WebDAVClient client = new WebDAVClient(serverUrl, username, password);
-            // 先测试连接
-            if (!client.testConnection()) {
-                statusMsg = "连接失败";
-                return false;
-            }
-
             // 获取远程文件列表
             List<String> remoteFiles = client.listFiles();
-            if (remoteFiles == null) {
-                statusMsg = "获取远程文件列表失败";
-                return false;
-            }
+            int uploaded = 0, skipped = 0;
 
-            File localDir = new File(localPath);
-            File[] files = localDir.listFiles();
-            if (files == null || files.length == 0) {
-                statusMsg = "本地目录为空或无文件";
-                return false;
-            }
-
-            totalFiles = files.length;
-            int successCount = 0;
             for (File file : files) {
                 if (file.isFile()) {
-                    // 检查是否已存在（增量同步，只上传不存在的）
-                    if (!remoteFiles.contains(file.getName())) {
-                        publishProgress("上传: " + file.getName());
-                        boolean uploadedOk = client.uploadFile(file);
-                        if (uploadedOk) {
-                            successCount++;
-                            uploaded++;
-                        } else {
-                            // 可以记录失败
-                        }
+                    if (remoteFiles.contains(file.getName())) {
+                        skipped++;
                     } else {
-                        publishProgress("跳过已存在: " + file.getName());
+                        boolean ok = client.uploadFile(file);
+                        if (ok) uploaded++;
                     }
                 }
             }
-            statusMsg = "同步完成！成功上传 " + successCount + " 个文件，跳过 " + (totalFiles - successCount) + " 个已存在文件。";
-            return true;
-        }
 
-        @Override
-        protected void onProgressUpdate(String... values) {
-            tvStatus.setText(values[0]);
-        }
+            final int finalUploaded = uploaded;
+            final int finalSkipped = skipped;
+            mainHandler.post(() -> {
+                String msg = "同步完成！上传 " + finalUploaded + " 个文件，跳过 " + finalSkipped + " 个已存在文件。";
+                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show();
+            });
+        }).start();
+    }
 
-        @Override
-        protected void onPostExecute(Boolean result) {
-            progressBar.setVisibility(View.GONE);
-            tvStatus.setText(statusMsg);
-            Toast.makeText(MainActivity.this, statusMsg, Toast.LENGTH_LONG).show();
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_PERMISSIONS) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "权限已授予", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "需要存储权限才能读取本地文件", Toast.LENGTH_LONG).show();
+            }
         }
     }
 }
