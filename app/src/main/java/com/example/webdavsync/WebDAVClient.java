@@ -31,6 +31,7 @@ public class WebDAVClient {
                 .header("Authorization", Credentials.basic(username, password));
     }
 
+    // 测试连接
     public boolean testConnection() {
         try {
             Request request = authRequest()
@@ -47,8 +48,9 @@ public class WebDAVClient {
         }
     }
 
-    // 列出远程文件（返回文件名列表）
+    // 获取远程文件列表（只返回文件名）
     public List<String> listFiles() {
+        List<String> fileNames = new ArrayList<>();
         try {
             Request request = authRequest()
                     .url(serverUrl)
@@ -56,24 +58,22 @@ public class WebDAVClient {
                     .header("Depth", "1")
                     .build();
             try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) return null;
+                if (!response.isSuccessful()) return fileNames;
                 String body = response.body().string();
-                // 简单正则解析 href 标签，提取文件名（仅演示，可优化）
-                List<String> files = new ArrayList<>();
+                // 解析 href 标签，提取文件名
                 Pattern pattern = Pattern.compile("<href>.*?/([^/]+)</href>");
                 Matcher matcher = pattern.matcher(body);
                 while (matcher.find()) {
                     String name = matcher.group(1);
-                    if (!name.isEmpty() && !name.equals("/")) {
-                        files.add(name);
+                    if (!name.isEmpty() && !name.equals(serverUrl.substring(serverUrl.lastIndexOf('/') + 1))) {
+                        fileNames.add(name);
                     }
                 }
-                return files;
             }
         } catch (IOException e) {
             e.printStackTrace();
-            return null;
         }
+        return fileNames;
     }
 
     // 上传文件
