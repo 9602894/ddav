@@ -24,9 +24,47 @@
         android:hint="密码"
         android:inputType="textPassword" />
 
-    <Button
-        android:id="@+id/btn_test"
+    <EditText
+        android:id="@+id/et_local_path"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="测试连接" />
+        android:hint="本地目录路径 (如 /sdcard/Download)" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/btn_save"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="保存配置" />
+        <Button
+            android:id="@+id/btn_test"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="测试连接" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_sync"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="开始同步" />
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="状态显示"
+        android:textSize="14sp" />
 </LinearLayout>
