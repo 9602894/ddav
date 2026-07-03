@@ -38,13 +38,16 @@ public class RemoteBrowseActivity extends AppCompatActivity {
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
             String item = entries.get(position);
-            if (item.endsWith("/")) {
-                // 进入子目录
+            if (item.equals("../")) {
+                // 返回父目录
+                String parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                if (parentPath.isEmpty()) parentPath = "/";
+                loadDirectory(parentPath);
+            } else if (item.endsWith("/")) {
                 String newPath = currentPath.equals("/") ? item : currentPath + "/" + item;
                 loadDirectory(newPath);
             } else {
-                // 选择文件？这里我们只选目录，忽略文件
-                Toast.makeText(RemoteBrowseActivity.this, "请选择目录", Toast.LENGTH_SHORT).show();
+                Toast.makeText(RemoteBrowseActivity.this, "请选择目录（以 / 结尾）", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -55,19 +58,21 @@ public class RemoteBrowseActivity extends AppCompatActivity {
             List<String> items = client.listDirectory(path);
             runOnUiThread(() -> {
                 entries.clear();
-                // 添加父目录 ".."
-                if (!path.equals("/")) {
-                    entries.add("../");
-                }
-                // 只显示目录（以 / 结尾）
-                for (String item : items) {
-                    if (item.endsWith("/") || item.contains(".")) { // 简单判断，可能不准确，但可用
+                if (items != null && !items.isEmpty() && items.get(0).startsWith("错误")) {
+                    // 显示错误信息
+                    Toast.makeText(RemoteBrowseActivity.this, items.get(0), Toast.LENGTH_LONG).show();
+                    entries.add("加载失败，请检查路径或权限");
+                } else {
+                    if (!path.equals("/")) {
+                        entries.add("../");
+                    }
+                    for (String item : items) {
+                        // 显示所有条目（包括文件和目录）
                         entries.add(item);
                     }
-                }
-                // 若列表为空，添加提示
-                if (entries.isEmpty()) {
-                    entries.add("(空目录)");
+                    if (entries.isEmpty()) {
+                        entries.add("(空目录)");
+                    }
                 }
                 adapter = new ArrayAdapter<>(RemoteBrowseActivity.this, android.R.layout.simple_list_item_1, entries);
                 listView.setAdapter(adapter);
