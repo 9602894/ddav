@@ -84,7 +84,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
             holder.tvCloudBadge.setTextColor(context.getResources().getColor(android.R.color.holo_blue_dark));
-            holder.tvCloudBadge.setBackgroundColor(0x00000000); // 透明
+            holder.tvCloudBadge.setBackgroundColor(0x00000000);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
@@ -112,7 +112,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         // 加载缩略图
         if (isCloudView && item.remoteUrl != null) {
-            // 云端：尝试加载远程图片，失败显示文件类型图标
             Glide.with(context)
                     .load(item.remoteUrl)
                     .apply(new RequestOptions()
@@ -141,7 +140,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
                                 .error(getFileTypeIcon(item.name)))
                         .into(holder.ivThumbnail);
             } else {
-                // 非图片/视频文件显示类型图标
                 holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
             }
         } else {
@@ -188,7 +186,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             case "pptx": return android.R.drawable.ic_menu_slideshow;
             case "zip":
             case "rar":
-            case "7z": return android.R.drawable.ic_menu_archive;
+            case "7z": return android.R.drawable.ic_menu_archive; // 可能不存在，用 gallery 替代
             case "mp3":
             case "wav":
             case "flac": return android.R.drawable.ic_menu_my_calendar;
