@@ -103,7 +103,12 @@
             android:textSize="13sp"
             android:paddingStart="20dp"
             android:paddingEnd="20dp" />
-
+        <Button
+    android:id="@+id/btn_cloud_up"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="返回"
+    ... />
     </LinearLayout>
 
 </LinearLayout>
