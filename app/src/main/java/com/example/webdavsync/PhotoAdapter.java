@@ -44,12 +44,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
     public void setItems(List<PhotoItem> list) {
         this.items = list;
-        // ★ 强制设置第一个项为选中并标记为云端，用于测试
-        if (this.items != null && !this.items.isEmpty()) {
-            PhotoItem first = this.items.get(0);
-            first.isSelected = true;
-            first.isOnCloud = true;
-        }
         notifyDataSetChanged();
     }
 
