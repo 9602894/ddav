@@ -12,7 +12,7 @@
         android:theme="@style/Theme.PhoSync"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
-        android:icon="@android:drawable/ic_dialog_info">  <!-- 使用系统图标 -->
+        android:icon="@android:drawable/ic_menu_gallery">  <!-- 使用系统图标 -->
 
         <activity
             android:name=".MainActivity"
