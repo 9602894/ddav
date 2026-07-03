@@ -54,6 +54,7 @@ public class LocalBrowseActivity extends AppCompatActivity {
         currentPath = Environment.getExternalStorageDirectory() + "/Download";
         loadLocalDirectory(currentPath);
 
+        // 点击条目：切换选中状态（多选）
         lvLocalFiles.setOnItemClickListener((parent, view, position, id) -> {
             String item = entries.get(position);
             if (item.equals("..")) {
@@ -63,15 +64,9 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 }
                 return;
             }
-            String fullPath = filePaths.get(position);
-            if (fullPath != null) {
-                File file = new File(fullPath);
-                if (file.isDirectory()) {
-                    loadLocalDirectory(fullPath);
-                } else {
-                    Toast.makeText(LocalBrowseActivity.this, "文件: " + item, Toast.LENGTH_SHORT).show();
-                }
-            }
+            // 切换选中状态
+            boolean isChecked = lvLocalFiles.isItemChecked(position);
+            lvLocalFiles.setItemChecked(position, !isChecked);
         });
 
         btnLocalUp.setOnClickListener(v -> {
@@ -92,7 +87,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
         tvLocalStatus.setText("加载中...");
 
         new Thread(() -> {
-            // 获取远程文件列表（用于标记）
             List<String> remoteItems = client.listDirectory("");
             Set<String> remoteNames = new HashSet<>();
             for (String item : remoteItems) {
@@ -153,11 +147,15 @@ public class LocalBrowseActivity extends AppCompatActivity {
                     }
                 }
 
-                tvLocalStatus.setText("共 " + entries.size() + " 个项目");
+                tvLocalStatus.setText("共 " + entries.size() + " 个项目 (点击选中，再次点击取消)");
                 adapter = new ArrayAdapter<>(LocalBrowseActivity.this,
                         android.R.layout.simple_list_item_multiple_choice, entries);
                 lvLocalFiles.setAdapter(adapter);
                 lvLocalFiles.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+                // 清除所有选中状态
+                for (int i = 0; i < lvLocalFiles.getCount(); i++) {
+                    lvLocalFiles.setItemChecked(i, false);
+                }
             });
         }).start();
     }
@@ -170,7 +168,7 @@ public class LocalBrowseActivity extends AppCompatActivity {
             }
         }
         if (selectedPositions.isEmpty()) {
-            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "请先点击选中文件", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -206,7 +204,7 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 Toast.makeText(LocalBrowseActivity.this,
                         "上传完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
                         Toast.LENGTH_LONG).show();
-                loadLocalDirectory(currentPath); // 刷新列表
+                loadLocalDirectory(currentPath);
             });
         }).start();
     }
