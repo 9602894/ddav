@@ -24,9 +24,8 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     private boolean showCloudBadge = false;
     private boolean showLocalBadge = false;
     private boolean isCloudView = false;
-    private OnItemClickListener clickListener;
-    private OnItemLongClickListener longClickListener;
 
+    // 拆分监听器接口
     public interface OnItemClickListener {
         void onItemClick(PhotoItem item, int position);
     }
@@ -34,6 +33,9 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     public interface OnItemLongClickListener {
         void onItemLongClick(PhotoItem item, int position);
     }
+
+    private OnItemClickListener clickListener;
+    private OnItemLongClickListener longClickListener;
 
     public PhotoAdapter(Context context) {
         this.context = context;
@@ -81,27 +83,32 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
+        // 云朵标记（本地视图）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
+        // 手机标记（云端视图）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
         } else {
             holder.tvLocalBadge.setVisibility(View.GONE);
         }
 
+        // 视频标记
         if (item.isVideo) {
             holder.ivVideoBadge.setVisibility(View.VISIBLE);
         } else {
             holder.ivVideoBadge.setVisibility(View.GONE);
         }
 
+        // 显示文件名
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
+        // 加载缩略图
         if (isCloudView && item.remoteUrl != null) {
             Glide.with(context)
                     .load(item.remoteUrl)
@@ -135,15 +142,20 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
+        // 点击事件
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
+        // 长按事件
         holder.itemView.setOnLongClickListener(v -> {
-            if (longClickListener != null) longClickListener.onItemLongClick(item, position);
-            return true;
+            if (longClickListener != null) {
+                longClickListener.onItemLongClick(item, position);
+                return true;
+            }
+            return false;
         });
 
         holder.cbSelect.setOnClickListener(v -> {
