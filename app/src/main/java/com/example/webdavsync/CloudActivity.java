@@ -65,21 +65,23 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
+        // ★ 点击处理：判断是否为目录（以 '/' 结尾或不含 '.'）
         adapter.setOnItemClickListener((item, position) -> {
-            // ★ 判断是否为目录：如果名称以 '/' 结尾，或者没有包含 '.'（视为目录）
             boolean isDir = item.name.endsWith("/") || !item.name.contains(".");
             if (isDir) {
-                // 进入子目录（移除末尾的 /）
+                // 进入子目录
                 String subPath = item.name.endsWith("/") ? item.name.substring(0, item.name.length() - 1) : item.name;
                 String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
                 loadDirectory(newPath);
             } else {
-                // 切换选中状态
+                // 切换选中
                 item.isSelected = !item.isSelected;
                 adapter.notifyItemChanged(position);
                 updateSelectedCount();
             }
         });
+
+        // 长按不处理（由按钮删除）
 
         loadDirectory("");
 
@@ -143,7 +145,6 @@ public class CloudActivity extends AppCompatActivity {
                             fi.name = item;
                             fi.displayName = item;
                             fi.isOnCloud = true;
-                            // 判断是否为目录（同点击逻辑）
                             boolean isDir = item.endsWith("/") || !item.contains(".");
                             fi.isOnLocal = !isDir && localFileNames.contains(item);
                             if (!isDir) {
