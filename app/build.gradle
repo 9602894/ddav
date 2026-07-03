@@ -6,11 +6,6 @@ android {
     namespace 'com.example.webdavsync'
     compileSdk 34
 
-    // ★ 启用 BuildConfig 功能（允许自定义字段）
-    buildFeatures {
-        buildConfig true
-    }
-
     defaultConfig {
         applicationId 'com.example.webdavsync'
         minSdk 21
@@ -18,8 +13,12 @@ android {
         versionCode 1
         versionName '1.0'
 
-        // ★ 添加构建时间戳，用于版本确认
+        // 启用 buildConfig 字段
         buildConfigField "String", "TIMESTAMP", "\"" + System.currentTimeMillis() + "\""
+    }
+
+    buildFeatures {
+        buildConfig true   // 必须启用，否则 buildConfigField 不生效
     }
 
     buildTypes {
