@@ -3,7 +3,5 @@
     <color name="colorPrimary">#1a73e8</color>
     <color name="colorPrimaryDark">#0d47a1</color>
     <color name="colorAccent">#4CAF50</color>
-    <!-- 额外颜色 -->
-    <color name="nav_tint">#ffffff</color>
-    <!-- 其他颜色... -->
+    <color name="nav_tint">#333333</color>
 </resources>
