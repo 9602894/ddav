@@ -17,7 +17,6 @@ public class WebDAVClient {
     private final String password;
 
     public WebDAVClient(String serverUrl, String username, String password) {
-        // 确保 serverUrl 不以 / 结尾
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length()-1) : serverUrl;
         this.username = username;
         this.password = password;
@@ -52,23 +51,30 @@ public class WebDAVClient {
     public List<String> listDirectory(String path) {
         List<String> entries = new ArrayList<>();
         try {
-            String url = serverUrl + (path.startsWith("/") ? "" : "/") + path;
+            // 规范化路径
+            String cleanPath = path.startsWith("/") ? path.substring(1) : path;
+            cleanPath = cleanPath.endsWith("/") ? cleanPath.substring(0, cleanPath.length()-1) : cleanPath;
+            String url = serverUrl + (cleanPath.isEmpty() ? "" : "/" + cleanPath);
             Request request = authRequest()
                     .url(url)
                     .method("PROPFIND", null)
                     .header("Depth", "1")
                     .build();
             try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) return entries;
+                if (!response.isSuccessful()) {
+                    String msg = "HTTP " + response.code() + ": " + response.message();
+                    entries.add("错误: " + msg);
+                    return entries;
+                }
                 String body = response.body().string();
                 // 提取 href 标签内容
                 Pattern pattern = Pattern.compile("<href>([^<]+)</href>");
                 Matcher matcher = pattern.matcher(body);
-                String basePath = serverUrl + (path.endsWith("/") ? path : path + "/");
+                String basePath = url.endsWith("/") ? url : url + "/";
                 while (matcher.find()) {
                     String href = matcher.group(1);
-                    if (href.equals(basePath) || href.equals(serverUrl + "/") || href.equals(serverUrl)) continue;
-                    // 提取相对路径
+                    // 跳过自身和父目录
+                    if (href.equals(basePath) || href.equals(url + "/") || href.equals(url)) continue;
                     String relative = href.replace(serverUrl + "/", "");
                     if (!relative.isEmpty()) {
                         entries.add(relative);
@@ -77,13 +83,14 @@ public class WebDAVClient {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            entries.add("网络错误: " + e.getMessage());
         }
         return entries;
     }
 
     public boolean fileExists(String remotePath) {
         try {
-            String url = serverUrl + (remotePath.startsWith("/") ? "" : "/") + remotePath;
+            String url = serverUrl + "/" + remotePath.replace("//", "/");
             Request request = authRequest()
                     .url(url)
                     .head()
