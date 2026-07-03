@@ -28,9 +28,9 @@ public class LocalBrowseActivity extends AppCompatActivity {
     private List<String> filePaths = new ArrayList<>(); // 完整路径
     private String currentPath;
     private WebDAVClient client;
+    private Set<String> remoteFileNames = new HashSet<>();
 
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Set<String> remoteFileNames = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,16 +91,13 @@ public class LocalBrowseActivity extends AppCompatActivity {
         tvLocalPath.setText("本地: " + currentPath);
         tvLocalStatus.setText("加载中...");
 
-        // 先获取远程文件列表（用于标记已上传）
         new Thread(() -> {
+            // 获取远程文件列表（用于标记）
             List<String> remoteItems = client.listDirectory("");
             Set<String> remoteNames = new HashSet<>();
             for (String item : remoteItems) {
                 if (!item.endsWith("/")) {
-                    // 提取文件名（可能带路径，我们只取最后一部分）
-                    int lastSlash = item.lastIndexOf('/');
-                    String name = lastSlash > 0 ? item.substring(lastSlash + 1) : item;
-                    remoteNames.add(name);
+                    remoteNames.add(item);
                 }
             }
             remoteFileNames = remoteNames;
@@ -123,13 +120,12 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 filePaths.clear();
 
                 if (files != null) {
-                    // 添加父目录
+                    // 父目录
                     if (!currentPath.equals("/") && dir.getParentFile() != null) {
                         entries.add("..");
                         filePaths.add(dir.getParentFile().getAbsolutePath());
                     }
 
-                    // 先收集目录和文件
                     List<File> dirs = new ArrayList<>();
                     List<File> fileList = new ArrayList<>();
                     for (File f : files) {
@@ -139,7 +135,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                             fileList.add(f);
                         }
                     }
-
                     java.util.Collections.sort(dirs, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
                     java.util.Collections.sort(fileList, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
 
@@ -149,7 +144,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                     }
                     for (File f : fileList) {
                         String name = f.getName();
-                        // 检查是否已上传
                         if (remoteFileNames.contains(name)) {
                             entries.add(name + " ☁️");
                         } else {
@@ -175,7 +169,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 selectedPositions.add(i);
             }
         }
-
         if (selectedPositions.isEmpty()) {
             Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
             return;
@@ -191,20 +184,16 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 }
             }
         }
-
         if (toUpload.isEmpty()) {
             Toast.makeText(this, "选中的项目中没有文件", Toast.LENGTH_SHORT).show();
             return;
         }
 
         tvLocalStatus.setText("上传中... " + toUpload.size() + " 个文件");
-
         new Thread(() -> {
-            int success = 0;
-            int fail = 0;
+            int success = 0, fail = 0;
             for (File f : toUpload) {
-                boolean ok = client.uploadFile("", f);
-                if (ok) {
+                if (client.uploadFile("", f)) {
                     success++;
                 } else {
                     fail++;
@@ -217,8 +206,7 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 Toast.makeText(LocalBrowseActivity.this,
                         "上传完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
                         Toast.LENGTH_LONG).show();
-                // 刷新列表
-                loadLocalDirectory(currentPath);
+                loadLocalDirectory(currentPath); // 刷新列表
             });
         }).start();
     }
