@@ -28,15 +28,18 @@ public class WebDAVClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
-        // 如果全局 OkHttpClient 未初始化或凭证不同，则重新创建
-        if (okHttpClient == null) {
-            okHttpClient = buildOkHttpClient(username, password);
-        }
+        // 更新全局 OkHttpClient（用于 Glide）
+        updateOkHttpClient(this.username, this.password);
     }
 
-    // 新增 getter 方法
-    public String getUsername() { return username; }
-    public String getPassword() { return password; }
+    // Getter 方法（修复编译错误）
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
 
     private static OkHttpClient buildOkHttpClient(String user, String pass) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
@@ -68,7 +71,9 @@ public class WebDAVClient {
         okHttpClient = buildOkHttpClient(username, password);
     }
 
-    public String getServerUrl() { return serverUrl; }
+    public String getServerUrl() {
+        return serverUrl;
+    }
 
     private Request.Builder authRequest() {
         Request.Builder builder = new Request.Builder();
@@ -197,6 +202,7 @@ public class WebDAVClient {
     }
 }
 
+// 全局单例持有者
 class WebDAVClientHolder {
     private static WebDAVClient client;
     public static void setClient(WebDAVClient c) { client = c; }
