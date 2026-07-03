@@ -2,7 +2,6 @@ package com.example.webdavsync;
 
 import android.content.Context;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
 import android.media.ThumbnailUtils;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -13,7 +12,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -73,42 +71,33 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ 选中边框：Pho 风格——蓝色外发光边框（用 CardView 的 elevation + 描边模拟）
+        // ★ Pho 风格选中效果：亮蓝色边框 + 高阴影
         if (item.isSelected) {
-            // 设置卡片背景为白色，但添加外发光（使用 elevation + 阴影颜色）
-            holder.cardView.setCardBackgroundColor(Color.WHITE);
-            holder.cardView.setCardElevation(16f);
-            // 添加描边效果（通过设置前景或直接修改背景为带边框的 drawable，这里简单用背景色+阴影）
-            // 我们使用自定义 drawable 或直接设置边框（CardView 不支持直接边框，改用背景色）
-            // 替代方案：使用一个自定义 View 作为边框，但为了简单，我们强烈改变背景色并添加阴影
             holder.cardView.setCardBackgroundColor(Color.parseColor("#E3F2FD")); // 淡蓝背景
-            holder.cardView.setRadius(8f);
+            holder.cardView.setCardElevation(16f);
+            // 模拟边框：用 CardView 的 stroke 无法直接实现，用背景色替代
+            // 这里我们使用一个带边框的 drawable，但为简化，用深色阴影表示选中
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
-            holder.cardView.setRadius(4f);
         }
 
-        // ★ 云朵标记（Pho 风格：半透明蓝色背景 + 白色云朵）
+        // ★ 云朵标记（Pho 风格：半透明蓝色背景 + 白色文字）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
             holder.tvCloudBadge.setTextColor(Color.WHITE);
-            holder.tvCloudBadge.setBackgroundColor(Color.parseColor("#80 1E88E5")); // 半透明蓝
-            holder.tvCloudBadge.setPadding(4, 2, 4, 2);
-            holder.tvCloudBadge.setElevation(4f);
+            holder.tvCloudBadge.setBackgroundColor(Color.parseColor("#801E88E5"));
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记（Pho 风格：半透明绿色背景 + 白色手机）
+        // ★ 手机标记（Pho 风格：半透明绿色背景 + 白色文字）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
             holder.tvLocalBadge.setTextColor(Color.WHITE);
-            holder.tvLocalBadge.setBackgroundColor(Color.parseColor("#80 43A047")); // 半透明绿
-            holder.tvLocalBadge.setPadding(4, 2, 4, 2);
-            holder.tvLocalBadge.setElevation(4f);
+            holder.tvLocalBadge.setBackgroundColor(Color.parseColor("#8043A047"));
         } else {
             holder.tvLocalBadge.setVisibility(View.GONE);
         }
@@ -154,7 +143,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 点击事件：传递给 Activity
+        // ★ 点击切换选中（Pho 风格：单击选择）
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
