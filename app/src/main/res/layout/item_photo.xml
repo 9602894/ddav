@@ -38,7 +38,7 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
-            <!-- 云端已同步标记（对标 Pho 的 ☁️ 图标） -->
+            <!-- 云朵标记（本地视图） -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -51,26 +51,43 @@
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:text="☁️"
-                android:textSize="14sp"
+                android:textSize="16sp"
                 android:background="#cc000000"
                 android:textColor="#ffffff"
                 android:visibility="gone" />
 
-            <!-- 文件名 -->
+            <!-- 手机标记（云端视图） -->
+            <TextView
+                android:id="@+id/tv_local_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignTop="@+id/iv_thumbnail"
+                android:layout_alignStart="@+id/iv_thumbnail"
+                android:layout_margin="6dp"
+                android:paddingLeft="6dp"
+                android:paddingRight="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:text="📱"
+                android:textSize="16sp"
+                android:background="#cc000000"
+                android:textColor="#ffffff"
+                android:visibility="gone" />
+
+            <!-- 文件名（缩略图下方） -->
             <TextView
                 android:id="@+id/tv_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_below="@+id/iv_thumbnail"
-                android:padding="6dp"
+                android:padding="4dp"
                 android:text=""
                 android:textSize="11sp"
                 android:textColor="#666666"
                 android:singleLine="true"
-                android:ellipsize="middle"
-                android:visibility="gone" />
+                android:ellipsize="middle" />
 
-            <!-- 复选框（右上角，对标 Pho 的选择样式） -->
+            <!-- 复选框（右上角） -->
             <CheckBox
                 android:id="@+id/cb_select"
                 android:layout_width="28dp"
@@ -78,7 +95,7 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignEnd="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-            
+                android:background="@android:color/white"
                 android:button="@null"
                 android:gravity="center"
                 android:focusable="false"
