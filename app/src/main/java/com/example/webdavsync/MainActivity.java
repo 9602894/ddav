@@ -13,6 +13,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -39,6 +40,7 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private static final int REQUEST_PERMISSIONS = 100;
 
     private RecyclerView rvPhotos;
@@ -58,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // ★ 写入构建时间戳到文件，便于确认版本
+        // ★ 写入构建时间戳，并记录详细日志
         writeBuildInfo();
 
         initViews();
@@ -82,9 +84,7 @@ public class MainActivity extends AppCompatActivity {
     private void writeBuildInfo() {
         try {
             File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            if (!downloadDir.exists()) {
-                downloadDir.mkdirs();
-            }
+            if (!downloadDir.exists()) downloadDir.mkdirs();
             File infoFile = new File(downloadDir, "build_info.txt");
             String timestamp = BuildConfig.TIMESTAMP;
             String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -95,10 +95,10 @@ public class MainActivity extends AppCompatActivity {
             try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile))) {
                 writer.write(content);
             }
-            // 短暂 Toast 提示
+            Log.d(TAG, "Build info written to: " + infoFile.getAbsolutePath());
             Toast.makeText(this, "构建信息已写入 Download/build_info.txt", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
-            e.printStackTrace();
+            Log.e(TAG, "写入构建信息失败", e);
         }
     }
 
@@ -120,8 +120,13 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
-        adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
+        adapter.setOnItemClickListener((item, position) -> {
+            Log.d(TAG, "点击: " + item.name + ", isSelected=" + item.isSelected);
+            updateSelectedCount();
+        });
+
         adapter.setOnItemLongClickListener((item, position) -> {
+            Log.d(TAG, "长按: " + item.name);
             showDeleteLocalDialog(item, position);
         });
     }
@@ -162,9 +167,11 @@ public class MainActivity extends AppCompatActivity {
                     remoteFileNames.add(f);
                 }
             }
+            Log.d(TAG, "远程文件列表: " + remoteFileNames.toString());
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
+                    Log.d(TAG, "本地文件: " + item.name + ", 是否在云端: " + item.isOnCloud);
                 }
                 adapter.notifyDataSetChanged();
             });
@@ -217,6 +224,7 @@ public class MainActivity extends AppCompatActivity {
             if (item.isSelected) count++;
         }
         tvSelectedCount.setText("已选择 " + count + " 项");
+        Log.d(TAG, "选中数量: " + count);
     }
 
     private void setupListeners() {
