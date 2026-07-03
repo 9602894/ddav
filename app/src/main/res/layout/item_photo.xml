@@ -78,7 +78,7 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignEnd="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-                android:background="@drawable/cb_bg"
+            
                 android:button="@null"
                 android:gravity="center"
                 android:focusable="false"
