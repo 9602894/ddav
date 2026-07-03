@@ -1,33 +1,29 @@
 package com.example.webdavsync;
 
-import android.app.AlertDialog;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 public class CloudBrowseActivity extends AppCompatActivity {
 
-    private ListView lvCloudFiles;
+    private RecyclerView rvCloud;
     private TextView tvCloudPath, tvCloudStatus;
-    private Button btnCloudUp, btnCloudRefresh;
+    private Button btnCloudUp, btnCloudRefresh, btnCloudDownload;
 
-    private ArrayAdapter<String> adapter;
-    private List<String> entries = new ArrayList<>();
-    private List<String> fullPaths = new ArrayList<>();
+    private FileAdapter adapter;
     private WebDAVClient client;
     private String currentPath = "";
-
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -35,45 +31,25 @@ public class CloudBrowseActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_cloud_browse);
 
-        lvCloudFiles = findViewById(R.id.lv_cloud_files);
+        rvCloud = findViewById(R.id.rv_cloud_files);
         tvCloudPath = findViewById(R.id.tv_cloud_path);
         tvCloudStatus = findViewById(R.id.tv_cloud_status);
         btnCloudUp = findViewById(R.id.btn_cloud_up);
         btnCloudRefresh = findViewById(R.id.btn_cloud_refresh);
+        btnCloudDownload = findViewById(R.id.btn_cloud_download);
 
         client = WebDAVClientHolder.getClient();
         if (client == null) {
-            Toast.makeText(this, "未连接到服务器，请先连接", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "未连接服务器", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
 
+        rvCloud.setLayoutManager(new GridLayoutManager(this, 2));
+        adapter = new FileAdapter(this, false);
+        rvCloud.setAdapter(adapter);
+
         loadDirectory("");
-
-        lvCloudFiles.setOnItemClickListener((parent, view, position, id) -> {
-            String item = entries.get(position);
-            if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")
-                    || item.equals("(空目录)") || item.equals("(加载失败)")) {
-                return;
-            }
-            if (item.endsWith("/")) {
-                String newPath = currentPath.isEmpty() ? item.substring(0, item.length() - 1)
-                        : currentPath + "/" + item.substring(0, item.length() - 1);
-                loadDirectory(newPath);
-            } else {
-                Toast.makeText(CloudBrowseActivity.this, "文件: " + item + "\n长按可下载", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        lvCloudFiles.setOnItemLongClickListener((parent, view, position, id) -> {
-            String item = entries.get(position);
-            if (item.endsWith("/") || item.startsWith("错误") || item.startsWith("网络错误")
-                    || item.startsWith("警告") || item.equals("(空目录)") || item.equals("(加载失败)")) {
-                return true;
-            }
-            showDownloadDialog(item, fullPaths.get(position));
-            return true;
-        });
 
         btnCloudUp.setOnClickListener(v -> {
             if (currentPath.isEmpty()) {
@@ -86,6 +62,8 @@ public class CloudBrowseActivity extends AppCompatActivity {
         });
 
         btnCloudRefresh.setOnClickListener(v -> loadDirectory(currentPath));
+
+        btnCloudDownload.setOnClickListener(v -> downloadSelected());
     }
 
     private void loadDirectory(String path) {
@@ -96,8 +74,7 @@ public class CloudBrowseActivity extends AppCompatActivity {
         new Thread(() -> {
             List<String> items = client.listDirectory(currentPath);
             mainHandler.post(() -> {
-                entries.clear();
-                fullPaths.clear();
+                List<FileAdapter.FileItem> list = new ArrayList<>();
                 if (items != null && !items.isEmpty()) {
                     boolean hasError = false;
                     for (String item : items) {
@@ -108,85 +85,64 @@ public class CloudBrowseActivity extends AppCompatActivity {
                         }
                     }
                     if (hasError) {
-                        entries.add("(加载失败)");
-                    } else if (items.size() == 1 && items.get(0).equals("(空目录)")) {
-                        tvCloudStatus.setText("目录为空");
-                        entries.add("(空)");
+                        tvCloudStatus.setText("加载失败");
                     } else {
-                        tvCloudStatus.setText("共 " + items.size() + " 个项目");
+                        tvCloudStatus.setText("共 " + items.size() + " 项");
                         for (String item : items) {
-                            entries.add(item);
-                            String full = currentPath.isEmpty() ? item : currentPath + "/" + item;
-                            fullPaths.add(full);
+                            FileAdapter.FileItem fi = new FileAdapter.FileItem(item);
+                            fi.remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
+                            list.add(fi);
                         }
-                        java.util.Collections.sort(entries);
                     }
                 } else {
-                    tvCloudStatus.setText("空目录或加载失败");
-                    entries.add("(空)");
+                    tvCloudStatus.setText("空目录");
                 }
-                adapter = new ArrayAdapter<>(CloudBrowseActivity.this,
-                        android.R.layout.simple_list_item_1, entries);
-                lvCloudFiles.setAdapter(adapter);
+                adapter.setItems(list);
             });
         }).start();
     }
 
-    private void showDownloadDialog(final String fileName, final String remotePath) {
-        new AlertDialog.Builder(this)
-                .setTitle("下载文件")
-                .setMessage("是否将 \"" + fileName + "\" 下载到手机 Download 目录？")
-                .setPositiveButton("下载", (dialog, which) -> downloadFile(remotePath, fileName))
-                .setNegativeButton("取消", null)
-                .show();
-    }
+    private void downloadSelected() {
+        List<FileAdapter.FileItem> selected = new ArrayList<>();
+        for (FileAdapter.FileItem fi : adapter.getItems()) {
+            if (fi.isSelected && !fi.name.endsWith("/")) {
+                selected.add(fi);
+            }
+        }
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "请先选中文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
-    private void downloadFile(String remotePath, String fileName) {
-        Toast.makeText(this, "开始下载: " + fileName, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "开始下载 " + selected.size() + " 个文件", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
-            try {
+            int success = 0, fail = 0;
+            for (FileAdapter.FileItem fi : selected) {
                 File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                if (!downloadDir.exists()) {
-                    downloadDir.mkdirs();
-                }
-                File destFile = new File(downloadDir, fileName);
-                // 如果文件已存在，添加数字后缀
+                if (!downloadDir.exists()) downloadDir.mkdirs();
+                File destFile = new File(downloadDir, fi.name);
+                // 处理重名
                 int count = 1;
-                String name = fileName;
+                String name = fi.name;
                 String ext = "";
-                int dotIndex = fileName.lastIndexOf('.');
-                if (dotIndex > 0) {
-                    name = fileName.substring(0, dotIndex);
-                    ext = fileName.substring(dotIndex);
-                }
+                int dot = fi.name.lastIndexOf('.');
+                if (dot > 0) { name = fi.name.substring(0, dot); ext = fi.name.substring(dot); }
                 while (destFile.exists()) {
                     destFile = new File(downloadDir, name + "_" + count + ext);
                     count++;
                 }
-
-                // 关键修正：将 destFile 赋值给一个 final 变量，供 lambda 使用
-                final File finalDestFile = destFile;
-
-                boolean success = client.downloadFile(remotePath, destFile);
-                mainHandler.post(() -> {
-                    if (success) {
-                        Toast.makeText(CloudBrowseActivity.this,
-                                "下载完成: " + finalDestFile.getName(),
-                                Toast.LENGTH_LONG).show();
-                    } else {
-                        Toast.makeText(CloudBrowseActivity.this,
-                                "下载失败",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                mainHandler.post(() ->
-                        Toast.makeText(CloudBrowseActivity.this,
-                                "下载出错: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show()
-                );
+                boolean ok = client.downloadFile(fi.remotePath, destFile);
+                if (ok) success++; else fail++;
             }
+            final int finalSuccess = success;
+            final int finalFail = fail;
+            mainHandler.post(() -> {
+                tvCloudStatus.setText("下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
+                Toast.makeText(CloudBrowseActivity.this, "下载完成", Toast.LENGTH_LONG).show();
+                // 清除选中状态
+                for (FileAdapter.FileItem fi : adapter.getItems()) fi.isSelected = false;
+                adapter.notifyDataSetChanged();
+            });
         }).start();
     }
 }
