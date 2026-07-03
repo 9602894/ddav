@@ -245,7 +245,6 @@ public class MainActivity extends AppCompatActivity {
         if (!finalRemoteDir.isEmpty()) {
             new Thread(() -> {
                 boolean dirExists = false;
-                // 检查目录是否存在
                 List<String> dirs = webdavClient.listDirectory("");
                 for (String d : dirs) {
                     if (d.equals(finalRemoteDir + "/") || d.equals(finalRemoteDir)) {
@@ -254,24 +253,20 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 if (!dirExists) {
-                    // 创建目录
                     boolean created = webdavClient.createDirectory(finalRemoteDir);
                     mainHandler.post(() -> {
                         if (created) {
                             Toast.makeText(MainActivity.this, "目录已创建: /" + finalRemoteDir, Toast.LENGTH_SHORT).show();
-                            // 继续上传
                             performUpload(selected, finalRemoteDir);
                         } else {
                             Toast.makeText(MainActivity.this, "创建目录失败: /" + finalRemoteDir, Toast.LENGTH_LONG).show();
                         }
                     });
                 } else {
-                    // 目录存在，直接上传
                     mainHandler.post(() -> performUpload(selected, finalRemoteDir));
                 }
             }).start();
         } else {
-            // 根目录，直接上传
             performUpload(selected, "");
         }
     }
