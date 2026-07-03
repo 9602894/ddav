@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
             List<String> files = webdavClient.listDirectory("");
             remoteFileNames.clear();
             for (String f : files) {
-                if (!f.endsWith("/")) {
+                if (!f.endsWith("/") && f.contains(".")) {
                     remoteFileNames.add(f);
                 }
             }
