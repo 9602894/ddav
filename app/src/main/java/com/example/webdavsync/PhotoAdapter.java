@@ -31,12 +31,8 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         void onItemClick(PhotoItem item, int position);
     }
 
-    public interface OnItemLongClickListener {
-        void onItemLongClick(PhotoItem item, int position);
-    }
-
+    // ★ 移除长按监听接口
     private OnItemClickListener clickListener;
-    private OnItemLongClickListener longClickListener;
 
     public PhotoAdapter(Context context) {
         this.context = context;
@@ -56,7 +52,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     public void setCloudView(boolean isCloud) { this.isCloudView = isCloud; }
 
     public void setOnItemClickListener(OnItemClickListener listener) { this.clickListener = listener; }
-    public void setOnItemLongClickListener(OnItemLongClickListener listener) { this.longClickListener = listener; }
 
     @NonNull
     @Override
@@ -71,7 +66,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 彩色边框
+        // ★ 彩色边框
         if (item.isSelected) {
             holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7"));
             holder.cardView.setCardElevation(8f);
@@ -80,7 +75,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.cardView.setCardElevation(2f);
         }
 
-        // 云朵标记
+        // ★ 云朵标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -90,7 +85,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记
+        // ★ 手机标记
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -141,22 +136,15 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 点击选中
+        // ★ 点击：仅切换选中状态
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
-        // 长按删除
-        holder.itemView.setOnLongClickListener(v -> {
-            if (longClickListener != null) {
-                longClickListener.onItemLongClick(item, position);
-                return true;
-            }
-            return false;
-        });
-
+        // ★ 移除长按监听，删除只能由按钮触发
+        holder.itemView.setOnLongClickListener(null);
         holder.cbSelect.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
