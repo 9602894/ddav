@@ -55,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
 
-        // 权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             String[] perms = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -268,7 +267,6 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    // ★ 本地删除：选中的文件删除
     private void deleteSelectedLocal() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
@@ -282,7 +280,7 @@ public class MainActivity extends AppCompatActivity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("删除本地文件")
-                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？（仅删除本地文件）")
+                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？")
                 .setPositiveButton("删除", (dialog, which) -> {
                     int success = 0;
                     for (PhotoAdapter.PhotoItem item : selected) {
