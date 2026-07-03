@@ -71,16 +71,16 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 选中状态：彩色边框（蓝色高亮）
+        // ★ 彩色边框：选中时背景变蓝
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7")); // 浅蓝色
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7")); // 浅蓝
             holder.cardView.setCardElevation(8f);
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
         }
 
-        // 云朵标记（彩色透明背景）
+        // ★ 云朵标记（彩色透明背景）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -90,7 +90,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记（彩色透明背景）
+        // ★ 手机标记（彩色透明背景）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -107,54 +107,49 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivVideoBadge.setVisibility(View.GONE);
         }
 
-        // 显示文件名
+        // 文件名
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
-        // 加载缩略图
+        // 缩略图加载
         if (isCloudView && item.remoteUrl != null) {
             Glide.with(context)
                     .load(item.remoteUrl)
                     .apply(new RequestOptions()
                             .centerCrop()
                             .override(300, 300)
-                            .placeholder(getFileTypeIcon(item.name))
-                            .error(getFileTypeIcon(item.name)))
+                            .placeholder(android.R.drawable.ic_menu_gallery)
+                            .error(android.R.drawable.ic_menu_gallery))
                     .into(holder.ivThumbnail);
         } else if (item.file != null && item.file.exists()) {
             if (item.isVideo) {
                 android.graphics.Bitmap bitmap = ThumbnailUtils.createVideoThumbnail(
                         item.file.getAbsolutePath(),
                         MediaStore.Video.Thumbnails.MINI_KIND);
-                if (bitmap != null) {
-                    holder.ivThumbnail.setImageBitmap(bitmap);
-                } else {
-                    holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
-                }
-            } else if (isImageFile(item.name)) {
+                if (bitmap != null) holder.ivThumbnail.setImageBitmap(bitmap);
+                else holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+            } else {
                 Glide.with(context)
                         .load(item.file)
                         .apply(new RequestOptions()
                                 .centerCrop()
                                 .override(300, 300)
-                                .placeholder(getFileTypeIcon(item.name))
-                                .error(getFileTypeIcon(item.name)))
+                                .placeholder(android.R.drawable.ic_menu_gallery)
+                                .error(android.R.drawable.ic_menu_gallery))
                         .into(holder.ivThumbnail);
-            } else {
-                holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
             }
         } else {
-            holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
+            holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 点击选中（不是长按）
+        // ★ 点击选中（非长按）
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
-        // 长按删除
+        // 长按删除（保留）
         holder.itemView.setOnLongClickListener(v -> {
             if (longClickListener != null) {
                 longClickListener.onItemLongClick(item, position);
@@ -168,33 +163,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
-    }
-
-    private boolean isImageFile(String name) {
-        String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
-        return ext.matches("jpg|jpeg|png|gif|bmp|webp");
-    }
-
-    private int getFileTypeIcon(String name) {
-        String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
-        switch (ext) {
-            case "pdf": return android.R.drawable.ic_menu_agenda;
-            case "doc":
-            case "docx": return android.R.drawable.ic_menu_edit;
-            case "xls":
-            case "xlsx": return android.R.drawable.ic_menu_manage;
-            case "ppt":
-            case "pptx": return android.R.drawable.ic_menu_slideshow;
-            case "zip":
-            case "rar":
-            case "7z": return android.R.drawable.ic_menu_gallery;
-            case "mp3":
-            case "wav":
-            case "flac": return android.R.drawable.ic_menu_my_calendar;
-            case "txt":
-            case "log": return android.R.drawable.ic_menu_info_details;
-            default: return android.R.drawable.ic_menu_gallery;
-        }
     }
 
     @Override
