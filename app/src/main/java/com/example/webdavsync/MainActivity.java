@@ -88,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
+        // ★ Pho 风格：点击切换选中
         adapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             adapter.notifyItemChanged(position);
@@ -127,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
             List<String> files = webdavClient.listDirectory("");
             remoteFileNames.clear();
             for (String f : files) {
-                if (!f.endsWith("/") && f.contains(".")) {
+                if (!f.endsWith("/")) {
                     remoteFileNames.add(f);
                 }
             }
