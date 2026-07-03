@@ -26,9 +26,15 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
@@ -52,8 +58,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // ★ 显示构建时间，用于确认版本
-        Toast.makeText(this, "Build: " + BuildConfig.TIMESTAMP, Toast.LENGTH_LONG).show();
+        // ★ 写入构建时间戳到文件，便于确认版本
+        writeBuildInfo();
 
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
@@ -71,6 +77,29 @@ public class MainActivity extends AppCompatActivity {
         loadCurrentConnection();
         loadLocalPhotos();
         setupListeners();
+    }
+
+    private void writeBuildInfo() {
+        try {
+            File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (!downloadDir.exists()) {
+                downloadDir.mkdirs();
+            }
+            File infoFile = new File(downloadDir, "build_info.txt");
+            String timestamp = BuildConfig.TIMESTAMP;
+            String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                    .format(new Date(Long.parseLong(timestamp)));
+            String content = "Build Timestamp: " + timestamp + "\n"
+                           + "Build Date: " + date + "\n"
+                           + "Version: " + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")\n";
+            try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile))) {
+                writer.write(content);
+            }
+            // 短暂 Toast 提示
+            Toast.makeText(this, "构建信息已写入 Download/build_info.txt", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void initViews() {
