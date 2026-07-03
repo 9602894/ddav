@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -19,6 +20,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class CloudActivity extends AppCompatActivity {
+
+    private static final String TAG = "CloudActivity";
 
     private RecyclerView rvCloud;
     private TextView tvCloudPath, tvCloudCount, tvCloudSelected;
@@ -66,6 +69,7 @@ public class CloudActivity extends AppCompatActivity {
         rvCloud.setAdapter(adapter);
 
         adapter.setOnItemClickListener((item, position) -> {
+            Log.d(TAG, "点击: " + item.name);
             if (item.name.endsWith("/")) {
                 String newPath = currentPath.isEmpty() ? item.name.substring(0, item.name.length() - 1)
                         : currentPath + "/" + item.name.substring(0, item.name.length() - 1);
@@ -78,6 +82,7 @@ public class CloudActivity extends AppCompatActivity {
         });
 
         adapter.setOnItemLongClickListener((item, position) -> {
+            Log.d(TAG, "长按: " + item.name);
             if (!item.name.endsWith("/")) {
                 showDeleteDialog(item, position);
             }
@@ -86,6 +91,7 @@ public class CloudActivity extends AppCompatActivity {
         loadDirectory("");
 
         tvCloudPath.setOnClickListener(v -> {
+            Log.d(TAG, "点击路径，当前路径: " + currentPath);
             if (!currentPath.isEmpty()) {
                 loadDirectory("");
             } else {
@@ -116,6 +122,7 @@ public class CloudActivity extends AppCompatActivity {
                 if (f.isFile()) localFileNames.add(f.getName());
             }
         }
+        Log.d(TAG, "本地文件列表: " + localFileNames.toString());
     }
 
     private void loadDirectory(String path) {
@@ -125,6 +132,7 @@ public class CloudActivity extends AppCompatActivity {
 
         new Thread(() -> {
             List<String> items = client.listDirectory(currentPath);
+            Log.d(TAG, "从服务器获取的列表: " + items.toString());
             mainHandler.post(() -> {
                 List<PhotoAdapter.PhotoItem> list = new ArrayList<>();
 
@@ -176,6 +184,7 @@ public class CloudActivity extends AppCompatActivity {
             if (item.isSelected) count++;
         }
         tvCloudSelected.setText("已选择 " + count + " 项");
+        Log.d(TAG, "选中数量: " + count);
     }
 
     private void downloadSelected() {
