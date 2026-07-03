@@ -2,9 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.webdavsync">
 
-    <!-- 网络权限 -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- 存储权限（Android 9 及以下需要 WRITE_EXTERNAL_STORAGE） -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
@@ -16,7 +14,6 @@
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true">
 
-        <!-- 主界面 -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -27,16 +24,15 @@
             </intent-filter>
         </activity>
 
-        <!-- 云端界面 -->
         <activity
             android:name=".CloudActivity"
             android:windowSoftInputMode="adjustPan" />
 
-        <!-- 设置界面（若未实现，可保留或删除，但删除后需调整 MainActivity 中的跳转） -->
         <activity
             android:name=".SettingsActivity"
             android:windowSoftInputMode="adjustPan" />
 
+        <!-- 新增的 Activity 无需注册，因为已包含在 MainActivity 的底部导航中，不单独注册 -->
     </application>
 
 </manifest>
