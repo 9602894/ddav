@@ -48,7 +48,8 @@ public class CloudBrowseActivity extends AppCompatActivity {
 
         lvCloudFiles.setOnItemClickListener((parent, view, position, id) -> {
             String item = entries.get(position);
-            if (item.startsWith("错误") || item.startsWith("网络错误") || item.equals("(空)")) {
+            if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")
+                    || item.equals("(空目录)") || item.equals("(加载失败)")) {
                 return;
             }
             if (item.endsWith("/")) {
@@ -84,16 +85,27 @@ public class CloudBrowseActivity extends AppCompatActivity {
             mainHandler.post(() -> {
                 entries.clear();
                 if (items != null && !items.isEmpty()) {
-                    if (items.get(0).startsWith("错误") || items.get(0).startsWith("网络错误")) {
-                        tvCloudStatus.setText(items.get(0));
+                    // 检查是否有错误或警告
+                    boolean hasError = false;
+                    for (String item : items) {
+                        if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")) {
+                            tvCloudStatus.setText(item);
+                            hasError = true;
+                            break;
+                        }
+                    }
+                    if (hasError) {
                         entries.add("(加载失败)");
+                    } else if (items.size() == 1 && items.get(0).equals("(空目录)")) {
+                        tvCloudStatus.setText("目录为空");
+                        entries.add("(空)");
                     } else {
                         tvCloudStatus.setText("共 " + items.size() + " 个项目");
                         entries.addAll(items);
                         java.util.Collections.sort(entries);
                     }
                 } else {
-                    tvCloudStatus.setText("空目录");
+                    tvCloudStatus.setText("空目录或加载失败");
                     entries.add("(空)");
                 }
                 adapter = new ArrayAdapter<>(CloudBrowseActivity.this,
