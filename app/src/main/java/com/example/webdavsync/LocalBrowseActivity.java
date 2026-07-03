@@ -47,12 +47,9 @@ public class LocalBrowseActivity extends AppCompatActivity {
         tvSelectedCount = findViewById(R.id.tv_selected_count);
         btnUpload = findViewById(R.id.btn_local_upload);
 
-        // 请求存储权限
+        // 权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            String[] perms = {
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-            };
+            String[] perms = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
@@ -67,15 +64,12 @@ public class LocalBrowseActivity extends AppCompatActivity {
             return;
         }
 
-        // 设置网格布局 - 3列
         rvLocal.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new FileAdapter(this, true);
         rvLocal.setAdapter(adapter);
 
-        // 更新选中计数
         adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
 
-        // 加载相册
         loadLocalPhotos();
 
         btnUpload.setOnClickListener(v -> uploadSelected());
@@ -95,7 +89,7 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 }
             }
 
-            // 扫描相册目录（DCIM/Camera 和 Pictures）
+            // 扫描相册目录
             List<File> photoDirs = new ArrayList<>();
             File dcimDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM);
             if (dcimDir != null && dcimDir.exists()) {
@@ -110,7 +104,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 photoDirs.add(picturesDir);
             }
 
-            // 收集所有媒体文件
             List<FileAdapter.FileItem> items = new ArrayList<>();
             Set<String> addedNames = new HashSet<>();
 
@@ -120,7 +113,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 if (files == null) continue;
                 for (File f : files) {
                     if (f.isFile() && isMediaFile(f.getName())) {
-                        // 避免重复
                         if (addedNames.contains(f.getAbsolutePath())) continue;
                         addedNames.add(f.getAbsolutePath());
 
@@ -136,7 +128,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 }
             }
 
-            // 按修改时间排序（最新的在前）
             items.sort((a, b) -> Long.compare(b.lastModified, a.lastModified));
 
             final List<FileAdapter.FileItem> finalItems = items;
@@ -188,7 +179,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 boolean ok = client.uploadFile("", fi.file);
                 if (ok) success++; else fail++;
             }
-
             final int finalSuccess = success;
             final int finalFail = fail;
             mainHandler.post(() -> {
@@ -197,7 +187,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 Toast.makeText(LocalBrowseActivity.this,
                         "上传完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
                         Toast.LENGTH_LONG).show();
-                // 刷新列表
                 loadLocalPhotos();
             });
         }).start();
