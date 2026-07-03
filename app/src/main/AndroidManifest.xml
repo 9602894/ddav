@@ -13,12 +13,7 @@
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true">
 
-        <!-- 声明 Glide 模块，用于添加认证 -->
-        <meta-data
-            android:name="com.bumptech.glide.integration.okhttp.OkHttpGlideModule"
-            android:value="GlideModule" />
-
-        <!-- 替换为我们的自定义模块 -->
+        <!-- Glide 模块（自定义） -->
         <meta-data
             android:name="com.example.webdavsync.GlideConfig"
             android:value="GlideModule" />
