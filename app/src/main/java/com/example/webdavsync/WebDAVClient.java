@@ -17,6 +17,9 @@ public class WebDAVClient {
     private final String username;
     private final String password;
 
+    // 静态 OkHttpClient 实例，用于 Glide（带认证）
+    private static OkHttpClient okHttpClient;
+
     public WebDAVClient(String serverUrl, String username, String password) {
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
         this.username = username == null ? "" : username;
@@ -25,15 +28,49 @@ public class WebDAVClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
+        // 如果全局 OkHttpClient 未初始化或凭证不同，则重新创建
+        if (okHttpClient == null || !username.equals(okHttpClient.interceptors().isEmpty() ? "" : "")) {
+            okHttpClient = buildOkHttpClient(username, password);
+        }
+    }
+
+    private static OkHttpClient buildOkHttpClient(String user, String pass) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS);
+        if (!user.isEmpty() && !pass.isEmpty()) {
+            String credential = Credentials.basic(user, pass);
+            builder.addInterceptor(chain -> {
+                Request original = chain.request();
+                Request request = original.newBuilder()
+                        .header("Authorization", credential)
+                        .build();
+                return chain.proceed(request);
+            });
+        }
+        return builder.build();
+    }
+
+    // 供 Glide 使用的静态方法
+    public static OkHttpClient getOkHttpClient() {
+        if (okHttpClient == null) {
+            // 默认匿名
+            okHttpClient = buildOkHttpClient("", "");
+        }
+        return okHttpClient;
+    }
+
+    // 更新全局 OkHttpClient（当凭证改变时）
+    public static void updateOkHttpClient(String username, String password) {
+        okHttpClient = buildOkHttpClient(username, password);
     }
 
     public String getServerUrl() { return serverUrl; }
 
     private Request.Builder authRequest() {
         Request.Builder builder = new Request.Builder();
-        // 只有用户名和密码都非空时才添加认证头
         if (!username.isEmpty() && !password.isEmpty()) {
-            String credential = okhttp3.Credentials.basic(username, password);
+            String credential = Credentials.basic(username, password);
             builder.header("Authorization", credential);
         }
         return builder;
