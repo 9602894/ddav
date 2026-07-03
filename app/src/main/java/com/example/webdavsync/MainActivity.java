@@ -239,17 +239,16 @@ public class MainActivity extends AppCompatActivity {
         }
 
         String remoteDir = etRemoteDir.getText().toString().trim();
-        if (remoteDir.isEmpty()) {
-            remoteDir = "";
-        }
+        // 为 lambda 创建 final 副本
+        final String finalRemoteDir = remoteDir.isEmpty() ? "" : remoteDir;
 
-        Toast.makeText(this, "开始同步 " + selected.size() + " 张照片到 /" + remoteDir, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "开始同步 " + selected.size() + " 张照片到 /" + finalRemoteDir, Toast.LENGTH_SHORT).show();
         btnSync.setEnabled(false);
 
         new Thread(() -> {
             int success = 0, fail = 0;
             for (PhotoAdapter.PhotoItem item : selected) {
-                boolean ok = webdavClient.uploadFile(remoteDir, item.file);
+                boolean ok = webdavClient.uploadFile(finalRemoteDir, item.file);
                 if (ok) {
                     success++;
                     item.isOnCloud = true;
