@@ -12,6 +12,9 @@ android {
         targetSdk 34
         versionCode 1
         versionName '1.0'
+
+        // ★ 添加构建时间戳，用于版本确认
+        buildConfigField "String", "TIMESTAMP", "\"" + System.currentTimeMillis() + "\""
     }
 
     buildTypes {
