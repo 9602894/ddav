@@ -1,7 +1,6 @@
 package com.example.webdavsync;
 
 import okhttp3.*;
-import okhttp3.Credentials;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -20,8 +19,8 @@ public class WebDAVClient {
 
     public WebDAVClient(String serverUrl, String username, String password) {
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
-        this.username = username;
-        this.password = password;
+        this.username = username == null ? "" : username;
+        this.password = password == null ? "" : password;
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
@@ -32,9 +31,10 @@ public class WebDAVClient {
 
     private Request.Builder authRequest() {
         Request.Builder builder = new Request.Builder();
-        // 仅当用户名和密码均不为空时才添加认证
-        if (username != null && !username.isEmpty() && password != null) {
-            builder.header("Authorization", Credentials.basic(username, password));
+        // 只有用户名和密码都非空时才添加认证头
+        if (!username.isEmpty() && !password.isEmpty()) {
+            String credential = okhttp3.Credentials.basic(username, password);
+            builder.header("Authorization", credential);
         }
         return builder;
     }
