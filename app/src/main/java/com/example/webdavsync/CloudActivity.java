@@ -20,7 +20,7 @@ public class CloudActivity extends AppCompatActivity {
 
     private RecyclerView rvCloud;
     private TextView tvCloudPath, tvCloudCount, tvCloudSelected;
-    private Button btnDownload;
+    private Button btnDownload, btnUp;
     private ImageView ivBack;
 
     private PhotoAdapter adapter;
@@ -38,6 +38,7 @@ public class CloudActivity extends AppCompatActivity {
         tvCloudCount = findViewById(R.id.tv_cloud_count);
         tvCloudSelected = findViewById(R.id.tv_cloud_selected);
         btnDownload = findViewById(R.id.btn_download);
+        btnUp = findViewById(R.id.btn_cloud_up);
         ivBack = findViewById(R.id.iv_back);
 
         client = WebDAVClientHolder.getClient();
@@ -47,9 +48,15 @@ public class CloudActivity extends AppCompatActivity {
             return;
         }
 
+        // 更新 Glide 的 OkHttpClient 凭证
+        WebDAVClient.updateOkHttpClient(
+                client.getUsername() != null ? client.getUsername() : "",
+                client.getPassword() != null ? client.getPassword() : ""
+        );
+
         rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new PhotoAdapter(this);
-        adapter.setShowCloudBadge(false);
+        adapter.setCloudView(true);
         rvCloud.setAdapter(adapter);
 
         adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
@@ -57,6 +64,16 @@ public class CloudActivity extends AppCompatActivity {
         loadDirectory("");
 
         ivBack.setOnClickListener(v -> finish());
+
+        btnUp.setOnClickListener(v -> {
+            if (currentPath.isEmpty()) {
+                Toast.makeText(this, "已在根目录", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int lastSlash = currentPath.lastIndexOf('/');
+            String parent = lastSlash > 0 ? currentPath.substring(0, lastSlash) : "";
+            loadDirectory(parent);
+        });
 
         btnDownload.setOnClickListener(v -> downloadSelected());
     }
@@ -87,6 +104,9 @@ public class CloudActivity extends AppCompatActivity {
                             PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
                             fi.name = item;
                             fi.isOnCloud = true;
+                            // 构造远程 URL
+                            String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
+                            fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                             String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
                             fi.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
                             list.add(fi);
@@ -135,7 +155,6 @@ public class CloudActivity extends AppCompatActivity {
 
                 String remotePath = currentPath.isEmpty() ? item.name : currentPath + "/" + item.name;
                 File destFile = new File(downloadDir, item.name);
-                // 处理重名
                 int count = 1;
                 String name = item.name;
                 String ext = "";
