@@ -52,6 +52,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // ★ 显示构建时间，用于确认版本
+        Toast.makeText(this, "Build: " + BuildConfig.TIMESTAMP, Toast.LENGTH_LONG).show();
+
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
 
