@@ -128,23 +128,29 @@ public class CloudActivity extends AppCompatActivity {
 
                     if (!hasError) {
                         for (String item : items) {
-                            // 判断是否为目录：以 / 结尾
-                            boolean isDir = item.endsWith("/");
-                            PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
-                            fi.name = item;
-                            fi.displayName = isDir ? item.substring(0, item.length() - 1) : item;
-                            fi.isOnCloud = true;
-                            fi.isOnLocal = !isDir && localFileNames.contains(item);
-                            if (!isDir) {
+                            if (item.endsWith("/")) {
+                                // 显示目录（可点击进入）
+                                PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
+                                fi.name = item;
+                                fi.displayName = item;
+                                fi.isOnCloud = true;
+                                fi.isOnLocal = false;
+                                fi.remoteUrl = null;
+                                fi.isVideo = false;
+                                list.add(fi);
+                            } else {
+                                PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
+                                fi.name = item;
+                                fi.displayName = item;
+                                fi.isOnCloud = true;
+                                fi.isOnLocal = localFileNames.contains(item);
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
                                 fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                                 String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
                                 fi.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
-                            } else {
-                                fi.remoteUrl = null;
-                                fi.isVideo = false;
+                                fi.dateModified = 0;
+                                list.add(fi);
                             }
-                            list.add(fi);
                         }
                         Collections.sort(list, (a, b) -> a.name.compareToIgnoreCase(b.name));
                         tvCloudCount.setText(list.size() + " 个项目");
@@ -168,14 +174,121 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void downloadSelected() {
-        // ... 与之前相同
+        List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
+        for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+            if (item.isSelected && !item.name.endsWith("/")) {
+                selected.add(item);
+            }
+        }
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(this, "开始下载 " + selected.size() + " 个文件", Toast.LENGTH_SHORT).show();
+        btnDownload.setEnabled(false);
+
+        new Thread(() -> {
+            int success = 0, fail = 0;
+            for (PhotoAdapter.PhotoItem item : selected) {
+                File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                if (!downloadDir.exists()) downloadDir.mkdirs();
+                File destFile = new File(downloadDir, item.name);
+                int count = 1;
+                String name = item.name;
+                String ext = "";
+                int dot = item.name.lastIndexOf('.');
+                if (dot > 0) { name = item.name.substring(0, dot); ext = item.name.substring(dot); }
+                while (destFile.exists()) {
+                    destFile = new File(downloadDir, name + "_" + count + ext);
+                    count++;
+                }
+                String remotePath = currentPath.isEmpty() ? item.name : currentPath + "/" + item.name;
+                boolean ok = client.downloadFile(remotePath, destFile);
+                if (ok) success++; else fail++;
+            }
+
+            final int finalSuccess = success;
+            final int finalFail = fail;
+            mainHandler.post(() -> {
+                btnDownload.setEnabled(true);
+                tvCloudCount.setText("下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
+                Toast.makeText(CloudActivity.this,
+                        "下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
+                        Toast.LENGTH_LONG).show();
+                for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+                    item.isSelected = false;
+                }
+                adapter.notifyDataSetChanged();
+                updateSelectedCount();
+                collectLocalFiles();
+                loadDirectory(currentPath);
+            });
+        }).start();
     }
 
     private void deleteSelected() {
-        // ... 与之前相同
+        List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
+        for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+            if (item.isSelected && !item.name.endsWith("/")) {
+                selected.add(item);
+            }
+        }
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("删除云端文件")
+                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    Toast.makeText(this, "开始删除...", Toast.LENGTH_SHORT).show();
+                    new Thread(() -> {
+                        int success = 0, fail = 0;
+                        for (PhotoAdapter.PhotoItem item : selected) {
+                            String remotePath = currentPath.isEmpty() ? item.name : currentPath + "/" + item.name;
+                            boolean ok = client.deleteFile(remotePath);
+                            if (ok) success++; else fail++;
+                        }
+                        final int finalSuccess = success;
+                        final int finalFail = fail;
+                        mainHandler.post(() -> {
+                            tvCloudCount.setText("删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
+                            Toast.makeText(CloudActivity.this,
+                                    "删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
+                                    Toast.LENGTH_LONG).show();
+                            loadDirectory(currentPath);
+                        });
+                    }).start();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 
     private void showDeleteDialog(PhotoAdapter.PhotoItem item, int position) {
-        // ... 与之前相同
+        if (item.name.endsWith("/")) {
+            Toast.makeText(this, "不能删除目录", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("删除文件")
+                .setMessage("确定要删除 \"" + item.name + "\" 吗？")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    String remotePath = currentPath.isEmpty() ? item.name : currentPath + "/" + item.name;
+                    new Thread(() -> {
+                        boolean ok = client.deleteFile(remotePath);
+                        mainHandler.post(() -> {
+                            if (ok) {
+                                Toast.makeText(CloudActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
+                                loadDirectory(currentPath);
+                            } else {
+                                Toast.makeText(CloudActivity.this, "删除失败", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }).start();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 }
