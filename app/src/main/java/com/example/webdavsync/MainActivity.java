@@ -1,6 +1,7 @@
 package com.example.webdavsync;
 
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -14,6 +15,7 @@ import android.os.Looper;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -35,8 +37,9 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView rvPhotos;
     private TextView tvConnectionStatus, tvPhotoCount, tvSelectedCount;
-    private Button btnSync, btnCloud;
+    private Button btnSync, btnCloud, btnDeleteLocal;
     private ImageView ivSettings;
+    private EditText etRemoteDir;
 
     private PhotoAdapter adapter;
     private WebDAVClient webdavClient;
@@ -78,7 +81,9 @@ public class MainActivity extends AppCompatActivity {
         tvSelectedCount = findViewById(R.id.tv_selected_count);
         btnSync = findViewById(R.id.btn_sync);
         btnCloud = findViewById(R.id.btn_cloud);
+        btnDeleteLocal = findViewById(R.id.btn_delete_local);
         ivSettings = findViewById(R.id.iv_settings);
+        etRemoteDir = findViewById(R.id.et_remote_dir);
     }
 
     private void setupRecyclerView() {
@@ -88,6 +93,10 @@ public class MainActivity extends AppCompatActivity {
         rvPhotos.setAdapter(adapter);
 
         adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
+        adapter.setOnItemLongClickListener((item, position) -> {
+            // 长按删除本地文件
+            showDeleteLocalDialog(item, position);
+        });
     }
 
     private void loadCurrentConnection() {
@@ -105,7 +114,6 @@ public class MainActivity extends AppCompatActivity {
                 mainHandler.post(() -> {
                     if (ok) {
                         tvConnectionStatus.setText("✅ 已连接: " + server);
-                        // 更新 Glide 凭证
                         WebDAVClient.updateOkHttpClient(username, password);
                         loadRemoteFileList();
                     } else {
@@ -169,6 +177,7 @@ public class MainActivity extends AppCompatActivity {
                             item.file = file;
                             item.dateModified = date;
                             item.isOnCloud = remoteFileNames.contains(name);
+                            item.displayName = name;
                             String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
                             item.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
                             items.add(item);
@@ -209,6 +218,8 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(new Intent(this, CloudActivity.class));
         });
+
+        btnDeleteLocal.setOnClickListener(v -> deleteSelectedLocal());
     }
 
     private void syncToCloud() {
@@ -229,13 +240,19 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        Toast.makeText(this, "开始同步 " + selected.size() + " 张照片", Toast.LENGTH_SHORT).show();
+        // 获取指定的远程目录
+        String remoteDir = etRemoteDir.getText().toString().trim();
+        if (remoteDir.isEmpty()) {
+            remoteDir = "";
+        }
+
+        Toast.makeText(this, "开始同步 " + selected.size() + " 张照片到 /" + remoteDir, Toast.LENGTH_SHORT).show();
         btnSync.setEnabled(false);
 
         new Thread(() -> {
             int success = 0, fail = 0;
             for (PhotoAdapter.PhotoItem item : selected) {
-                boolean ok = webdavClient.uploadFile("", item.file);
+                boolean ok = webdavClient.uploadFile(remoteDir, item.file);
                 if (ok) {
                     success++;
                     item.isOnCloud = true;
@@ -261,6 +278,50 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    private void deleteSelectedLocal() {
+        List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
+        for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+            if (item.isSelected && item.file != null && item.file.exists()) {
+                selected.add(item);
+            }
+        }
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("删除本地文件")
+                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？（仅删除本地文件，不影响云端）")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    int success = 0;
+                    for (PhotoAdapter.PhotoItem item : selected) {
+                        if (item.file.delete()) success++;
+                    }
+                    Toast.makeText(this, "已删除 " + success + " 个本地文件", Toast.LENGTH_SHORT).show();
+                    loadLocalPhotos();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    private void showDeleteLocalDialog(PhotoAdapter.PhotoItem item, int position) {
+        if (item.file == null || !item.file.exists()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("删除本地文件")
+                .setMessage("确定要删除 \"" + item.name + "\" 吗？")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    if (item.file.delete()) {
+                        Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show();
+                        loadLocalPhotos();
+                    } else {
+                        Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
@@ -278,7 +339,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 从设置返回后重新加载连接
         loadCurrentConnection();
         loadLocalPhotos();
     }
