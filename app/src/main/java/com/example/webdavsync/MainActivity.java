@@ -1,6 +1,7 @@
 package com.example.webdavsync;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -15,14 +16,12 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import java.io.File;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSIONS = 100;
-    private EditText etServerUrl, etUsername, etPassword, etLocalPath;
-    private Button btnTest, btnSync, btnBrowse;
+    private EditText etServerUrl, etUsername, etPassword, etRemotePath, etLocalPath;
+    private Button btnTest, btnUpload, btnSync, btnCloud, btnBrowseRemote;
     private SharedPreferences prefs;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -34,15 +33,18 @@ public class MainActivity extends AppCompatActivity {
         etServerUrl = findViewById(R.id.et_server_url);
         etUsername = findViewById(R.id.et_username);
         etPassword = findViewById(R.id.et_password);
+        etRemotePath = findViewById(R.id.et_remote_path);
         etLocalPath = findViewById(R.id.et_local_path);
         btnTest = findViewById(R.id.btn_test);
+        btnUpload = findViewById(R.id.btn_upload);
         btnSync = findViewById(R.id.btn_sync);
-        btnBrowse = findViewById(R.id.btn_browse);
+        btnCloud = findViewById(R.id.btn_cloud);
+        btnBrowseRemote = findViewById(R.id.btn_browse_remote);
 
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
         loadSettings();
 
-        // 请求权限
+        // 权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             String[] perms = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -51,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // 保存配置（输入变化时自动保存）
+        // 自动保存（输入即存）
         android.text.TextWatcher watcher = new android.text.TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -60,20 +62,21 @@ public class MainActivity extends AppCompatActivity {
         etServerUrl.addTextChangedListener(watcher);
         etUsername.addTextChangedListener(watcher);
         etPassword.addTextChangedListener(watcher);
+        etRemotePath.addTextChangedListener(watcher);
         etLocalPath.addTextChangedListener(watcher);
 
         btnTest.setOnClickListener(v -> testConnection());
+        btnBrowseRemote.setOnClickListener(v -> startRemoteBrowse());
+        btnUpload.setOnClickListener(v -> startUpload());
         btnSync.setOnClickListener(v -> startSync());
-        btnBrowse.setOnClickListener(v -> {
-            // 简单提示，可扩展为文件夹选择器
-            Toast.makeText(this, "请手动输入路径，如 /sdcard/Download", Toast.LENGTH_SHORT).show();
-        });
+        btnCloud.setOnClickListener(v -> startCloud());
     }
 
     private void loadSettings() {
         etServerUrl.setText(prefs.getString("server_url", ""));
         etUsername.setText(prefs.getString("username", ""));
         etPassword.setText(prefs.getString("password", ""));
+        etRemotePath.setText(prefs.getString("remote_path", "/"));
         etLocalPath.setText(prefs.getString("local_path", Environment.getExternalStorageDirectory() + "/Download"));
     }
 
@@ -82,94 +85,84 @@ public class MainActivity extends AppCompatActivity {
         editor.putString("server_url", etServerUrl.getText().toString().trim());
         editor.putString("username", etUsername.getText().toString().trim());
         editor.putString("password", etPassword.getText().toString().trim());
+        editor.putString("remote_path", etRemotePath.getText().toString().trim());
         editor.putString("local_path", etLocalPath.getText().toString().trim());
         editor.apply();
     }
 
     private void testConnection() {
-        String serverUrl = etServerUrl.getText().toString().trim();
-        String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-
-        if (serverUrl.isEmpty()) {
+        String server = etServerUrl.getText().toString().trim();
+        String user = etUsername.getText().toString().trim();
+        String pass = etPassword.getText().toString().trim();
+        if (server.isEmpty()) {
             Toast.makeText(this, "请输入服务器地址", Toast.LENGTH_SHORT).show();
             return;
         }
-
-        Toast.makeText(this, "测试连接中...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "测试中...", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
-            WebDAVClient client = new WebDAVClient(serverUrl, username, password);
-            boolean success = client.testConnection();
+            WebDAVClient client = new WebDAVClient(server, user, pass);
+            boolean ok = client.testConnection();
             mainHandler.post(() -> {
-                if (success) {
-                    Toast.makeText(MainActivity.this, "连接成功！", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "连接失败，请检查配置", Toast.LENGTH_LONG).show();
-                }
+                Toast.makeText(MainActivity.this, ok ? "连接成功！" : "连接失败，请检查配置", Toast.LENGTH_LONG).show();
             });
         }).start();
     }
 
-    private void startSync() {
-        String serverUrl = etServerUrl.getText().toString().trim();
-        String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
-        String localPath = etLocalPath.getText().toString().trim();
+    private void startRemoteBrowse() {
+        Intent intent = new Intent(this, RemoteBrowseActivity.class);
+        intent.putExtra("server_url", etServerUrl.getText().toString().trim());
+        intent.putExtra("username", etUsername.getText().toString().trim());
+        intent.putExtra("password", etPassword.getText().toString().trim());
+        intent.putExtra("current_path", etRemotePath.getText().toString().trim());
+        startActivityForResult(intent, 1);
+    }
 
-        if (serverUrl.isEmpty() || localPath.isEmpty()) {
-            Toast.makeText(this, "请填写完整配置", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        File dir = new File(localPath);
-        if (!dir.exists() || !dir.isDirectory()) {
-            Toast.makeText(this, "本地目录不存在或不是目录", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        File[] files = dir.listFiles();
-        if (files == null || files.length == 0) {
-            Toast.makeText(this, "本地目录为空，没有文件可同步", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        Toast.makeText(this, "开始同步，共 " + files.length + " 个文件", Toast.LENGTH_SHORT).show();
-
-        new Thread(() -> {
-            WebDAVClient client = new WebDAVClient(serverUrl, username, password);
-            // 获取远程文件列表
-            List<String> remoteFiles = client.listFiles();
-            int uploaded = 0, skipped = 0;
-
-            for (File file : files) {
-                if (file.isFile()) {
-                    if (remoteFiles.contains(file.getName())) {
-                        skipped++;
-                    } else {
-                        boolean ok = client.uploadFile(file);
-                        if (ok) uploaded++;
-                    }
-                }
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1 && resultCode == RESULT_OK && data != null) {
+            String selected = data.getStringExtra("selected_path");
+            if (selected != null) {
+                etRemotePath.setText(selected);
+                saveSettings();
+                Toast.makeText(this, "远程目录已设置为: " + selected, Toast.LENGTH_SHORT).show();
             }
+        }
+    }
 
-            final int finalUploaded = uploaded;
-            final int finalSkipped = skipped;
-            mainHandler.post(() -> {
-                String msg = "同步完成！上传 " + finalUploaded + " 个文件，跳过 " + finalSkipped + " 个已存在文件。";
-                Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show();
-            });
-        }).start();
+    private void startUpload() {
+        Intent intent = new Intent(this, UploadActivity.class);
+        intent.putExtra("server_url", etServerUrl.getText().toString().trim());
+        intent.putExtra("username", etUsername.getText().toString().trim());
+        intent.putExtra("password", etPassword.getText().toString().trim());
+        intent.putExtra("remote_path", etRemotePath.getText().toString().trim());
+        startActivity(intent);
+    }
+
+    private void startSync() {
+        Intent intent = new Intent(this, SyncActivity.class);
+        intent.putExtra("server_url", etServerUrl.getText().toString().trim());
+        intent.putExtra("username", etUsername.getText().toString().trim());
+        intent.putExtra("password", etPassword.getText().toString().trim());
+        intent.putExtra("remote_path", etRemotePath.getText().toString().trim());
+        intent.putExtra("local_path", etLocalPath.getText().toString().trim());
+        startActivity(intent);
+    }
+
+    private void startCloud() {
+        Intent intent = new Intent(this, CloudFilesActivity.class);
+        intent.putExtra("server_url", etServerUrl.getText().toString().trim());
+        intent.putExtra("username", etUsername.getText().toString().trim());
+        intent.putExtra("password", etPassword.getText().toString().trim());
+        intent.putExtra("remote_path", etRemotePath.getText().toString().trim());
+        startActivity(intent);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_PERMISSIONS) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "权限已授予", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "需要存储权限才能读取本地文件", Toast.LENGTH_LONG).show();
-            }
+        if (requestCode == REQUEST_PERMISSIONS && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "权限已授予", Toast.LENGTH_SHORT).show();
         }
     }
 }
