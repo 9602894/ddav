@@ -7,7 +7,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -93,14 +92,12 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // 先测试连接
             Toast.makeText(this, "测试连接中...", Toast.LENGTH_SHORT).show();
             WebDAVClient testClient = new WebDAVClient(server, user, pass);
             new Thread(() -> {
                 boolean success = testClient.testConnection();
                 mainHandler.post(() -> {
                     if (success) {
-                        // 保存配置
                         SharedPreferences.Editor editor = prefs.edit();
                         editor.putString("config_" + name + "_server", server);
                         editor.putString("config_" + name + "_username", user);
@@ -171,7 +168,6 @@ public class MainActivity extends AppCompatActivity {
                         currentServerUrl = server;
                         currentUsername = user;
                         currentPassword = pass;
-                        // 保存到全局持有者
                         WebDAVClientHolder.setClient(client);
                         updateConnectionStatus(true);
                         Toast.makeText(MainActivity.this, "连接成功: " + selectedConfigName, Toast.LENGTH_LONG).show();
