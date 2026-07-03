@@ -1,8 +1,6 @@
 package com.example.webdavsync;
 
 import android.content.Context;
-import android.media.ThumbnailUtils;
-import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,8 +19,9 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
     private Context context;
     private List<PhotoItem> items = new ArrayList<>();
-    private OnItemClickListener listener;
     private boolean showCloudBadge = false;
+    private boolean isCloudView = false; // 是否云端视图
+    private OnItemClickListener listener;
 
     public interface OnItemClickListener {
         void onItemClick(PhotoItem item, int position);
@@ -45,6 +44,10 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         this.showCloudBadge = show;
     }
 
+    public void setCloudView(boolean isCloud) {
+        this.isCloudView = isCloud;
+    }
+
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.listener = listener;
     }
@@ -62,14 +65,12 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 云端标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 视频标记
         if (item.isVideo) {
             holder.ivVideoBadge.setVisibility(View.VISIBLE);
         } else {
@@ -77,7 +78,18 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         }
 
         // 加载缩略图
-        if (item.file != null && item.file.exists()) {
+        if (isCloudView && item.remoteUrl != null) {
+            // 云端：使用远程 URL 加载（通过 Glide + OkHttp 带认证）
+            Glide.with(context)
+                    .load(item.remoteUrl)
+                    .apply(new RequestOptions()
+                            .centerCrop()
+                            .override(300, 300)
+                            .placeholder(android.R.drawable.ic_menu_gallery)
+                            .error(android.R.drawable.ic_menu_gallery))
+                    .into(holder.ivThumbnail);
+        } else if (item.file != null && item.file.exists()) {
+            // 本地文件
             Glide.with(context)
                     .load(item.file)
                     .apply(new RequestOptions()
@@ -127,6 +139,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     public static class PhotoItem {
         public String name;
         public File file;
+        public String remoteUrl;      // 云端文件的完整 URL
         public boolean isSelected;
         public boolean isOnCloud;
         public boolean isVideo;
