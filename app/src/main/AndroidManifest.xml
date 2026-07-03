@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!-- Android 10+ 删除文件需要此权限（可选） -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
     <application
         android:allowBackup="true"
@@ -13,7 +15,7 @@
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true">
 
-        <!-- Glide 模块（自定义） -->
+        <!-- Glide 模块 -->
         <meta-data
             android:name="com.example.webdavsync.GlideConfig"
             android:value="GlideModule" />
@@ -28,13 +30,8 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".CloudActivity"
-            android:windowSoftInputMode="adjustPan" />
-
-        <activity
-            android:name=".SettingsActivity"
-            android:windowSoftInputMode="adjustPan" />
+        <activity android:name=".CloudActivity" android:windowSoftInputMode="adjustPan" />
+        <activity android:name=".SettingsActivity" android:windowSoftInputMode="adjustPan" />
 
     </application>
 
