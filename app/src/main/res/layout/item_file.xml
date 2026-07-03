@@ -38,23 +38,20 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
-            <!-- 文件名（底部） -->
+            <!-- 文件名 -->
             <TextView
                 android:id="@+id/tv_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_below="@+id/iv_thumbnail"
-                android:paddingLeft="6dp"
-                android:paddingRight="6dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
+                android:padding="6dp"
                 android:text="文件名"
                 android:textSize="12sp"
                 android:textColor="#333333"
                 android:singleLine="true"
                 android:ellipsize="middle" />
 
-            <!-- 复选框（右上角） -->
+            <!-- 复选框 -->
             <CheckBox
                 android:id="@+id/cb_select"
                 android:layout_width="28dp"
@@ -65,11 +62,10 @@
                 android:background="@android:color/white"
                 android:button="@null"
                 android:gravity="center"
-                android:text=""
                 android:focusable="false"
                 android:clickable="false" />
 
-            <!-- 云端状态标记（本地界面显示） -->
+            <!-- 云端状态标记 -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -77,17 +73,14 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignStart="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-                android:paddingLeft="4dp"
-                android:paddingRight="4dp"
-                android:paddingTop="2dp"
-                android:paddingBottom="2dp"
+                android:padding="2dp"
                 android:text="☁️"
                 android:textSize="16sp"
                 android:background="#cc000000"
                 android:textColor="#ffffff"
                 android:visibility="gone" />
 
-            <!-- 文件大小（底部右侧） -->
+            <!-- 文件大小 -->
             <TextView
                 android:id="@+id/tv_size"
                 android:layout_width="wrap_content"
