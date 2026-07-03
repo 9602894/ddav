@@ -65,15 +65,15 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
+        // ★ 点击处理：目录进入，文件选中
         adapter.setOnItemClickListener((item, position) -> {
-            // ★ 判断目录：名称以 '/' 结尾
             if (item.name.endsWith("/")) {
-                // 进入子目录（移除末尾的 /）
+                // 进入子目录
                 String subPath = item.name.substring(0, item.name.length() - 1);
                 String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
                 loadDirectory(newPath);
             } else {
-                // 切换选中状态
+                // 切换选中
                 item.isSelected = !item.isSelected;
                 adapter.notifyItemChanged(position);
                 updateSelectedCount();
@@ -138,7 +138,7 @@ public class CloudActivity extends AppCompatActivity {
 
                     if (!hasError) {
                         for (String item : items) {
-                            // ★ 确保目录项以 '/' 结尾
+                            // ★ 确保目录以 '/' 结尾
                             String displayName = item;
                             if (!item.endsWith("/") && !item.contains(".")) {
                                 displayName = item + "/";
