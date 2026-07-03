@@ -126,7 +126,9 @@ public class MainActivity extends AppCompatActivity {
             List<String> files = webdavClient.listDirectory("");
             remoteFileNames.clear();
             for (String f : files) {
-                if (!f.endsWith("/")) remoteFileNames.add(f);
+                if (!f.endsWith("/")) {
+                    remoteFileNames.add(f);
+                }
             }
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
@@ -280,7 +282,7 @@ public class MainActivity extends AppCompatActivity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("删除本地文件")
-                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？")
+                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？（仅删除本地文件）")
                 .setPositiveButton("删除", (dialog, which) -> {
                     int success = 0;
                     for (PhotoAdapter.PhotoItem item : selected) {
