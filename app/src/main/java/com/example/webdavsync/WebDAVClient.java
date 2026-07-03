@@ -1,190 +1,162 @@
 package com.example.webdavsync;
 
-import android.app.AlertDialog;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.View;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.ListView;
-import android.widget.TextView;
-import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
+import okhttp3.*;
+import okhttp3.Credentials;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class CloudBrowseActivity extends AppCompatActivity {
+public class WebDAVClient {
+    private final OkHttpClient client;
+    private final String serverUrl;
+    private final String username;
+    private final String password;
 
-    private ListView lvCloudFiles;
-    private TextView tvCloudPath, tvCloudStatus;
-    private Button btnCloudUp, btnCloudRefresh;
+    public WebDAVClient(String serverUrl, String username, String password) {
+        this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
+        this.username = username;
+        this.password = password;
+        this.client = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .build();
+    }
 
-    private ArrayAdapter<String> adapter;
-    private List<String> entries = new ArrayList<>();
-    private List<String> fullPaths = new ArrayList<>();
-    private WebDAVClient client;
-    private String currentPath = "";
+    public String getServerUrl() { return serverUrl; }
+    public String getUsername() { return username; }
+    public String getPassword() { return password; }
 
-    private Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Request.Builder authRequest() {
+        return new Request.Builder()
+                .header("Authorization", Credentials.basic(username, password));
+    }
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_cloud_browse);
-
-        lvCloudFiles = findViewById(R.id.lv_cloud_files);
-        tvCloudPath = findViewById(R.id.tv_cloud_path);
-        tvCloudStatus = findViewById(R.id.tv_cloud_status);
-        btnCloudUp = findViewById(R.id.btn_cloud_up);
-        btnCloudRefresh = findViewById(R.id.btn_cloud_refresh);
-
-        client = WebDAVClientHolder.getClient();
-        if (client == null) {
-            Toast.makeText(this, "未连接到服务器，请先连接", Toast.LENGTH_LONG).show();
-            finish();
-            return;
+    public boolean testConnection() {
+        try {
+            Request request = authRequest()
+                    .url(serverUrl + "/")
+                    .method("PROPFIND", null)
+                    .header("Depth", "1")
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
         }
+    }
 
-        loadDirectory("");
+    public List<String> listDirectory(String path) {
+        List<String> entries = new ArrayList<>();
+        try {
+            String cleanPath = (path == null) ? "" : path;
+            if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
+            if (cleanPath.endsWith("/") && cleanPath.length() > 1)
+                cleanPath = cleanPath.substring(0, cleanPath.length() - 1);
+            String url = serverUrl + (cleanPath.isEmpty() ? "" : "/" + cleanPath);
 
-        lvCloudFiles.setOnItemClickListener((parent, view, position, id) -> {
-            String item = entries.get(position);
-            if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")
-                    || item.equals("(空目录)") || item.equals("(加载失败)")) {
-                return;
+            Request request = authRequest()
+                    .url(url)
+                    .method("PROPFIND", null)
+                    .header("Depth", "1")
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    entries.add("错误: HTTP " + response.code());
+                    return entries;
+                }
+                String body = response.body().string();
+                Pattern pattern = Pattern.compile("<[a-zA-Z0-9:]*href>([^<]+)</[a-zA-Z0-9:]*href>");
+                Matcher matcher = pattern.matcher(body);
+                boolean found = false;
+                while (matcher.find()) {
+                    String href = matcher.group(1);
+                    if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
+                    String relative = href.replace(serverUrl + "/", "");
+                    if (!relative.isEmpty()) {
+                        if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
+                        entries.add(relative);
+                        found = true;
+                    }
+                }
+                if (!found) {
+                    Pattern pattern2 = Pattern.compile("<href>([^<]+)</href>");
+                    Matcher matcher2 = pattern2.matcher(body);
+                    while (matcher2.find()) {
+                        String href = matcher2.group(1);
+                        if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
+                        String relative = href.replace(serverUrl + "/", "");
+                        if (!relative.isEmpty()) {
+                            if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
+                            entries.add(relative);
+                            found = true;
+                        }
+                    }
+                }
+                if (!found) {
+                    if (body.contains("empty") || body.contains("Empty"))
+                        entries.add("(空目录)");
+                    else
+                        entries.add("警告: 无法解析");
+                }
             }
-            if (item.endsWith("/")) {
-                String newPath = currentPath.isEmpty() ? item.substring(0, item.length() - 1)
-                        : currentPath + "/" + item.substring(0, item.length() - 1);
-                loadDirectory(newPath);
-            } else {
-                Toast.makeText(CloudBrowseActivity.this, "文件: " + item + "\n长按可下载", Toast.LENGTH_SHORT).show();
-            }
-        });
+        } catch (IOException e) {
+            e.printStackTrace();
+            entries.add("网络错误: " + e.getMessage());
+        }
+        return entries;
+    }
 
-        lvCloudFiles.setOnItemLongClickListener((parent, view, position, id) -> {
-            String item = entries.get(position);
-            if (item.endsWith("/") || item.startsWith("错误") || item.startsWith("网络错误")
-                    || item.startsWith("警告") || item.equals("(空目录)") || item.equals("(加载失败)")) {
+    public boolean uploadFile(String remoteDir, File localFile) {
+        try {
+            String remotePath = (remoteDir == null || remoteDir.isEmpty()) ? localFile.getName()
+                    : remoteDir + "/" + localFile.getName();
+            remotePath = remotePath.replace("//", "/");
+            String url = serverUrl + "/" + remotePath;
+            MediaType mediaType = MediaType.parse("application/octet-stream");
+            RequestBody body = RequestBody.create(mediaType, localFile);
+            Request request = authRequest().url(url).put(body).build();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean downloadFile(String remotePath, File destFile) {
+        try {
+            String url = serverUrl + "/" + remotePath.replace("//", "/");
+            Request request = authRequest().url(url).get().build();
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) return false;
+                InputStream inputStream = response.body().byteStream();
+                FileOutputStream fos = new FileOutputStream(destFile);
+                byte[] buffer = new byte[8192];
+                int len;
+                while ((len = inputStream.read(buffer)) != -1) fos.write(buffer, 0, len);
+                fos.close();
+                inputStream.close();
                 return true;
             }
-            showDownloadDialog(item, fullPaths.get(position));
-            return true;
-        });
-
-        btnCloudUp.setOnClickListener(v -> {
-            if (currentPath.isEmpty()) {
-                Toast.makeText(this, "已在根目录", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            int lastSlash = currentPath.lastIndexOf('/');
-            String parent = lastSlash > 0 ? currentPath.substring(0, lastSlash) : "";
-            loadDirectory(parent);
-        });
-
-        btnCloudRefresh.setOnClickListener(v -> loadDirectory(currentPath));
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
+}
 
-    private void loadDirectory(String path) {
-        currentPath = path == null ? "" : path;
-        tvCloudPath.setText("云端: /" + currentPath);
-        tvCloudStatus.setText("加载中...");
-
-        new Thread(() -> {
-            List<String> items = client.listDirectory(currentPath);
-            mainHandler.post(() -> {
-                entries.clear();
-                fullPaths.clear();
-                if (items != null && !items.isEmpty()) {
-                    boolean hasError = false;
-                    for (String item : items) {
-                        if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")) {
-                            tvCloudStatus.setText(item);
-                            hasError = true;
-                            break;
-                        }
-                    }
-                    if (hasError) {
-                        entries.add("(加载失败)");
-                    } else if (items.size() == 1 && items.get(0).equals("(空目录)")) {
-                        tvCloudStatus.setText("目录为空");
-                        entries.add("(空)");
-                    } else {
-                        tvCloudStatus.setText("共 " + items.size() + " 个项目");
-                        for (String item : items) {
-                            entries.add(item);
-                            String full = currentPath.isEmpty() ? item : currentPath + "/" + item;
-                            fullPaths.add(full);
-                        }
-                        java.util.Collections.sort(entries);
-                    }
-                } else {
-                    tvCloudStatus.setText("空目录或加载失败");
-                    entries.add("(空)");
-                }
-                adapter = new ArrayAdapter<>(CloudBrowseActivity.this,
-                        android.R.layout.simple_list_item_1, entries);
-                lvCloudFiles.setAdapter(adapter);
-            });
-        }).start();
-    }
-
-    private void showDownloadDialog(final String fileName, final String remotePath) {
-        new AlertDialog.Builder(this)
-                .setTitle("下载文件")
-                .setMessage("是否将 \"" + fileName + "\" 下载到手机 Download 目录？")
-                .setPositiveButton("下载", (dialog, which) -> downloadFile(remotePath, fileName))
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void downloadFile(String remotePath, String fileName) {
-        Toast.makeText(this, "开始下载: " + fileName, Toast.LENGTH_SHORT).show();
-        new Thread(() -> {
-            try {
-                File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                if (!downloadDir.exists()) {
-                    downloadDir.mkdirs();
-                }
-                File destFile = new File(downloadDir, fileName);
-                // 如果文件已存在，添加数字后缀
-                int count = 1;
-                String name = fileName;
-                String ext = "";
-                int dotIndex = fileName.lastIndexOf('.');
-                if (dotIndex > 0) {
-                    name = fileName.substring(0, dotIndex);
-                    ext = fileName.substring(dotIndex);
-                }
-                while (destFile.exists()) {
-                    destFile = new File(downloadDir, name + "_" + count + ext);
-                    count++;
-                }
-
-                boolean success = client.downloadFile(remotePath, destFile);
-                final File finalDestFile = destFile; // 关键：声明为 final
-                mainHandler.post(() -> {
-                    if (success) {
-                        Toast.makeText(CloudBrowseActivity.this,
-                                "下载完成: " + finalDestFile.getName(),
-                                Toast.LENGTH_LONG).show();
-                    } else {
-                        Toast.makeText(CloudBrowseActivity.this,
-                                "下载失败",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                mainHandler.post(() ->
-                        Toast.makeText(CloudBrowseActivity.this,
-                                "下载出错: " + e.getMessage(),
-                                Toast.LENGTH_SHORT).show()
-                );
-            }
-        }).start();
-    }
+class WebDAVClientHolder {
+    private static WebDAVClient client;
+    public static void setClient(WebDAVClient c) { client = c; }
+    public static WebDAVClient getClient() { return client; }
 }
