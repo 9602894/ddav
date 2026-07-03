@@ -18,8 +18,8 @@ import java.util.List;
 public class CloudBrowseActivity extends AppCompatActivity {
 
     private RecyclerView rvCloud;
-    private TextView tvCloudPath, tvCloudStatus;
-    private Button btnCloudUp, btnCloudRefresh, btnCloudDownload;
+    private TextView tvCloudPath, tvCloudStatus, tvSelectedCount;
+    private Button btnCloudUp, btnCloudDownload;
 
     private FileAdapter adapter;
     private WebDAVClient client;
@@ -34,20 +34,23 @@ public class CloudBrowseActivity extends AppCompatActivity {
         rvCloud = findViewById(R.id.rv_cloud_files);
         tvCloudPath = findViewById(R.id.tv_cloud_path);
         tvCloudStatus = findViewById(R.id.tv_cloud_status);
+        tvSelectedCount = findViewById(R.id.tv_selected_count);
         btnCloudUp = findViewById(R.id.btn_cloud_up);
-        btnCloudRefresh = findViewById(R.id.btn_cloud_refresh);
         btnCloudDownload = findViewById(R.id.btn_cloud_download);
 
         client = WebDAVClientHolder.getClient();
         if (client == null) {
-            Toast.makeText(this, "未连接服务器", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "请先在主界面连接服务器", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
 
-        rvCloud.setLayoutManager(new GridLayoutManager(this, 2));
+        // 3列网格
+        rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new FileAdapter(this, false);
         rvCloud.setAdapter(adapter);
+
+        adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
 
         loadDirectory("");
 
@@ -61,20 +64,19 @@ public class CloudBrowseActivity extends AppCompatActivity {
             loadDirectory(parent);
         });
 
-        btnCloudRefresh.setOnClickListener(v -> loadDirectory(currentPath));
-
         btnCloudDownload.setOnClickListener(v -> downloadSelected());
     }
 
     private void loadDirectory(String path) {
         currentPath = path == null ? "" : path;
-        tvCloudPath.setText("云端: /" + currentPath);
+        tvCloudPath.setText("/" + currentPath);
         tvCloudStatus.setText("加载中...");
 
         new Thread(() -> {
             List<String> items = client.listDirectory(currentPath);
             mainHandler.post(() -> {
                 List<FileAdapter.FileItem> list = new ArrayList<>();
+
                 if (items != null && !items.isEmpty()) {
                     boolean hasError = false;
                     for (String item : items) {
@@ -84,22 +86,39 @@ public class CloudBrowseActivity extends AppCompatActivity {
                             break;
                         }
                     }
-                    if (hasError) {
-                        tvCloudStatus.setText("加载失败");
-                    } else {
-                        tvCloudStatus.setText("共 " + items.size() + " 项");
+
+                    if (!hasError) {
                         for (String item : items) {
                             FileAdapter.FileItem fi = new FileAdapter.FileItem(item);
+                            fi.displayName = item;
                             fi.remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
+                            fi.remoteUrl = client.getServerUrl() + "/" + fi.remotePath;
+                            fi.isVideo = isVideoFile(item);
                             list.add(fi);
                         }
+                        tvCloudStatus.setText(list.size() + " 项");
                     }
                 } else {
                     tvCloudStatus.setText("空目录");
                 }
+
                 adapter.setItems(list);
+                updateSelectedCount();
             });
         }).start();
+    }
+
+    private boolean isVideoFile(String name) {
+        String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
+        return ext.matches("mp4|3gp|avi|mkv|mov");
+    }
+
+    private void updateSelectedCount() {
+        int count = 0;
+        for (FileAdapter.FileItem fi : adapter.getItems()) {
+            if (fi.isSelected) count++;
+        }
+        tvSelectedCount.setText("已选 " + count + " 项");
     }
 
     private void downloadSelected() {
@@ -109,17 +128,21 @@ public class CloudBrowseActivity extends AppCompatActivity {
                 selected.add(fi);
             }
         }
+
         if (selected.isEmpty()) {
             Toast.makeText(this, "请先选中文件", Toast.LENGTH_SHORT).show();
             return;
         }
 
         Toast.makeText(this, "开始下载 " + selected.size() + " 个文件", Toast.LENGTH_SHORT).show();
+        btnCloudDownload.setEnabled(false);
+
         new Thread(() -> {
             int success = 0, fail = 0;
             for (FileAdapter.FileItem fi : selected) {
                 File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 if (!downloadDir.exists()) downloadDir.mkdirs();
+
                 File destFile = new File(downloadDir, fi.name);
                 // 处理重名
                 int count = 1;
@@ -131,17 +154,23 @@ public class CloudBrowseActivity extends AppCompatActivity {
                     destFile = new File(downloadDir, name + "_" + count + ext);
                     count++;
                 }
+
                 boolean ok = client.downloadFile(fi.remotePath, destFile);
                 if (ok) success++; else fail++;
             }
+
             final int finalSuccess = success;
             final int finalFail = fail;
             mainHandler.post(() -> {
+                btnCloudDownload.setEnabled(true);
                 tvCloudStatus.setText("下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
-                Toast.makeText(CloudBrowseActivity.this, "下载完成", Toast.LENGTH_LONG).show();
+                Toast.makeText(CloudBrowseActivity.this,
+                        "下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
+                        Toast.LENGTH_LONG).show();
                 // 清除选中状态
                 for (FileAdapter.FileItem fi : adapter.getItems()) fi.isSelected = false;
                 adapter.notifyDataSetChanged();
+                updateSelectedCount();
             });
         }).start();
     }
