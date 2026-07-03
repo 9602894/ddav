@@ -35,7 +35,7 @@
 
     </androidx.appcompat.widget.Toolbar>
 
-    <!-- 状态栏 -->
+    <!-- 连接状态栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -89,71 +89,21 @@
             android:background="@android:drawable/editbox_background" />
     </LinearLayout>
 
-    <!-- 照片网格 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rv_photos"
+    <!-- 内容容器：RecyclerView 或 其他视图 -->
+    <FrameLayout
+        android:id="@+id/content_frame"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:padding="2dp"
-        android:clipToPadding="false"
-        android:background="#f5f5f5" />
+        android:layout_weight="1" />
 
-    <!-- 底部操作栏 -->
-    <LinearLayout
+    <!-- 底部导航栏 -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:orientation="horizontal"
+        android:layout_height="wrap_content"
+        app:menu="@menu/bottom_nav_menu"
         android:background="#ffffff"
-        android:elevation="4dp"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:gravity="center_vertical">
-
-        <TextView
-            android:id="@+id/tv_selected_count"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:text="已选择 0 项"
-            android:textSize="14sp"
-            android:textColor="#333333" />
-
-        <Button
-            android:id="@+id/btn_delete_local"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="删除"
-            android:backgroundTint="#F44336"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp" />
-
-        <Button
-            android:id="@+id/btn_sync"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="上传"
-            android:backgroundTint="#4CAF50"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:layout_marginStart="8dp" />
-
-        <Button
-            android:id="@+id/btn_cloud"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="云端"
-            android:backgroundTint="#2196F3"
-            android:textColor="#ffffff"
-            android:textSize="12sp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:layout_marginStart="8dp" />
-
-    </LinearLayout>
+        app:itemIconTint="@color/nav_tint"
+        app:itemTextColor="@color/nav_tint" />
 
 </LinearLayout>
