@@ -16,7 +16,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class CloudActivity extends AppCompatActivity {
@@ -30,7 +29,7 @@ public class CloudActivity extends AppCompatActivity {
     private WebDAVClient client;
     private String currentPath = "";
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private List<String> localFileNames = new ArrayList<>(); // 本地已有文件名列表
+    private List<String> localFileNames = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,24 +52,21 @@ public class CloudActivity extends AppCompatActivity {
             return;
         }
 
-        // 更新 Glide 认证
         WebDAVClient.updateOkHttpClient(
                 client.getUsername() != null ? client.getUsername() : "",
                 client.getPassword() != null ? client.getPassword() : ""
         );
 
-        // 收集本地已有文件列表（用于标记）
         collectLocalFiles();
 
         rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new PhotoAdapter(this);
         adapter.setCloudView(true);
-        adapter.setShowLocalBadge(true); // 显示手机标记
+        adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
         adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
         adapter.setOnItemLongClickListener((item, position) -> {
-            // 长按删除
             showDeleteDialog(item, position);
         });
 
@@ -93,14 +89,12 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void collectLocalFiles() {
-        // 扫描 Download 和相册目录（简化）
         File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         if (downloadDir != null && downloadDir.exists()) {
             for (File f : downloadDir.listFiles()) {
                 if (f.isFile()) localFileNames.add(f.getName());
             }
         }
-        // 也可扫描相册，但为简化，只扫描 Download
     }
 
     private void loadDirectory(String path) {
@@ -130,17 +124,14 @@ public class CloudActivity extends AppCompatActivity {
                             fi.name = item;
                             fi.displayName = item;
                             fi.isOnCloud = true;
-                            // 检查本地是否存在
                             fi.isOnLocal = localFileNames.contains(item);
                             String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
                             fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                             String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
                             fi.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
-                            // 日期（这里无法获取，暂时用0，后续可扩展）
                             fi.dateModified = 0;
                             list.add(fi);
                         }
-                        // 按名称排序（可改为日期）
                         Collections.sort(list, (a, b) -> a.name.compareToIgnoreCase(b.name));
                         tvCloudCount.setText(list.size() + " 个文件");
                     }
@@ -210,7 +201,6 @@ public class CloudActivity extends AppCompatActivity {
                 }
                 adapter.notifyDataSetChanged();
                 updateSelectedCount();
-                // 刷新本地列表
                 collectLocalFiles();
                 loadDirectory(currentPath);
             });
@@ -248,7 +238,6 @@ public class CloudActivity extends AppCompatActivity {
                             Toast.makeText(CloudActivity.this,
                                     "删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
                                     Toast.LENGTH_LONG).show();
-                            // 刷新列表
                             loadDirectory(currentPath);
                         });
                     }).start();
