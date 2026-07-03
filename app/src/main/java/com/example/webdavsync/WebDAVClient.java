@@ -88,7 +88,6 @@ public class WebDAVClient {
         }
     }
 
-    // 递归创建目录
     public boolean createDirectory(String path) {
         if (path == null || path.isEmpty()) return true;
         try {
@@ -99,7 +98,7 @@ public class WebDAVClient {
             Request request = authRequest().url(url).method("MKCOL", null).build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) return true;
-                if (response.code() == 409) { // 父目录不存在
+                if (response.code() == 409) {
                     int lastSlash = cleanPath.lastIndexOf('/');
                     if (lastSlash > 0) {
                         String parent = cleanPath.substring(0, lastSlash);
