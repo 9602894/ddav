@@ -88,6 +88,40 @@ public class WebDAVClient {
         }
     }
 
+    // 创建目录（递归创建）
+    public boolean createDirectory(String path) {
+        if (path == null || path.isEmpty()) return true;
+        try {
+            // 先检查目录是否存在
+            String cleanPath = path;
+            if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
+            if (cleanPath.endsWith("/")) cleanPath = cleanPath.substring(0, cleanPath.length() - 1);
+            String url = serverUrl + "/" + cleanPath;
+            Request request = authRequest().url(url).method("MKCOL", null).build();
+            try (Response response = client.newCall(request).execute()) {
+                if (response.isSuccessful()) return true;
+                if (response.code() == 409) { // 冲突，可能父目录不存在
+                    // 递归创建父目录
+                    int lastSlash = cleanPath.lastIndexOf('/');
+                    if (lastSlash > 0) {
+                        String parent = cleanPath.substring(0, lastSlash);
+                        if (createDirectory(parent)) {
+                            // 再次尝试创建当前目录
+                            Request retryRequest = authRequest().url(url).method("MKCOL", null).build();
+                            try (Response retry = client.newCall(retryRequest).execute()) {
+                                return retry.isSuccessful();
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public List<String> listDirectory(String path) {
         List<String> entries = new ArrayList<>();
         try {
@@ -189,7 +223,6 @@ public class WebDAVClient {
         }
     }
 
-    // 删除远程文件
     public boolean deleteFile(String remotePath) {
         try {
             String url = serverUrl + "/" + remotePath.replace("//", "/");
