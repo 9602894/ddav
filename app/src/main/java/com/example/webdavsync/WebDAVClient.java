@@ -88,11 +88,10 @@ public class WebDAVClient {
         }
     }
 
-    // 创建目录（递归创建）
+    // 递归创建目录
     public boolean createDirectory(String path) {
         if (path == null || path.isEmpty()) return true;
         try {
-            // 先检查目录是否存在
             String cleanPath = path;
             if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
             if (cleanPath.endsWith("/")) cleanPath = cleanPath.substring(0, cleanPath.length() - 1);
@@ -100,13 +99,11 @@ public class WebDAVClient {
             Request request = authRequest().url(url).method("MKCOL", null).build();
             try (Response response = client.newCall(request).execute()) {
                 if (response.isSuccessful()) return true;
-                if (response.code() == 409) { // 冲突，可能父目录不存在
-                    // 递归创建父目录
+                if (response.code() == 409) { // 父目录不存在
                     int lastSlash = cleanPath.lastIndexOf('/');
                     if (lastSlash > 0) {
                         String parent = cleanPath.substring(0, lastSlash);
                         if (createDirectory(parent)) {
-                            // 再次尝试创建当前目录
                             Request retryRequest = authRequest().url(url).method("MKCOL", null).build();
                             try (Response retry = client.newCall(retryRequest).execute()) {
                                 return retry.isSuccessful();
