@@ -1,6 +1,7 @@
 package com.example.webdavsync;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.media.ThumbnailUtils;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -70,31 +71,32 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 彩色边框（选中时蓝色背景+高亮）
+        // 选中状态：彩色边框（蓝色高亮）
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(context.getResources().getColor(android.R.color.holo_blue_light));
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7")); // 浅蓝色
             holder.cardView.setCardElevation(8f);
+            // 添加边框（用 stroke 效果，但 CardView 不支持，我们用背景色模拟）
         } else {
-            holder.cardView.setCardBackgroundColor(context.getResources().getColor(android.R.color.white));
+            holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
         }
 
-        // 云朵标记（透明背景，彩色云）
+        // 云朵标记（彩色透明背景）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
-            holder.tvCloudBadge.setTextColor(context.getResources().getColor(android.R.color.holo_blue_dark));
-            holder.tvCloudBadge.setBackgroundColor(0x00000000); // 透明
+            holder.tvCloudBadge.setTextColor(Color.parseColor("#1E88E5")); // 蓝色
+            holder.tvCloudBadge.setBackgroundColor(Color.TRANSPARENT);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记（透明背景，彩色手机）
+        // 手机标记（彩色透明背景）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
-            holder.tvLocalBadge.setTextColor(context.getResources().getColor(android.R.color.holo_green_dark));
-            holder.tvLocalBadge.setBackgroundColor(0x00000000);
+            holder.tvLocalBadge.setTextColor(Color.parseColor("#43A047")); // 绿色
+            holder.tvLocalBadge.setBackgroundColor(Color.TRANSPARENT);
         } else {
             holder.tvLocalBadge.setVisibility(View.GONE);
         }
@@ -106,6 +108,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivVideoBadge.setVisibility(View.GONE);
         }
 
+        // 显示文件名
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
@@ -145,14 +148,14 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
         }
 
-        // 点击事件（切换选中）
+        // 点击选中（不是长按）
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
-        // 长按事件（删除）
+        // 长按删除
         holder.itemView.setOnLongClickListener(v -> {
             if (longClickListener != null) {
                 longClickListener.onItemLongClick(item, position);
