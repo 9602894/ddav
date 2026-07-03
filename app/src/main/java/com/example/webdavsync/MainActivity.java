@@ -94,7 +94,6 @@ public class MainActivity extends AppCompatActivity {
 
         adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
         adapter.setOnItemLongClickListener((item, position) -> {
-            // 长按删除本地文件
             showDeleteLocalDialog(item, position);
         });
     }
@@ -108,7 +107,6 @@ public class MainActivity extends AppCompatActivity {
             webdavClient = new WebDAVClient(server, username, password);
             WebDAVClientHolder.setClient(webdavClient);
             tvConnectionStatus.setText("🔗 " + server);
-            // 后台测试连接
             new Thread(() -> {
                 boolean ok = webdavClient.testConnection();
                 mainHandler.post(() -> {
@@ -240,7 +238,6 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // 获取指定的远程目录
         String remoteDir = etRemoteDir.getText().toString().trim();
         if (remoteDir.isEmpty()) {
             remoteDir = "";
