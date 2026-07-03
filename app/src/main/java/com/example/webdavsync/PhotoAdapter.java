@@ -71,17 +71,16 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ 选中边框更明显：橙色背景 + 粗边框（用 elevation 模拟）
+        // 选中边框：橙色
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#FF9800")); // 橙色
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#FF9800"));
             holder.cardView.setCardElevation(12f);
-            // 添加边框（实际可通过 stroke，但 CardView 不支持，用背景色替代）
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
         }
 
-        // ★ 云朵标记（彩色透明背景）
+        // 云朵标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -91,7 +90,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记（彩色透明背景）
+        // 手机标记
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -142,18 +141,8 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 点击选中
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
-        });
-
-        // 长按删除（保留，但主要用按钮）
-        holder.itemView.setOnLongClickListener(v -> {
-            if (longClickListener != null) {
-                longClickListener.onItemLongClick(item, position);
-                return true;
-            }
-            return false;
         });
 
         holder.cbSelect.setOnClickListener(v -> {
