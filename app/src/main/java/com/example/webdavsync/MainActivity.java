@@ -1,7 +1,6 @@
 package com.example.webdavsync;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -14,7 +13,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
@@ -39,20 +37,19 @@ public class MainActivity extends AppCompatActivity {
 
     private FrameLayout contentFrame;
     private RecyclerView rvPhotos;
-    private TextView tvConnectionStatus, tvFileCount, tvSelectedCount;
-    private Button btnSync, btnCloud, btnDeleteLocal;
-    private ImageView ivSettings;
+    private TextView tvConnectionStatus, tvPhotoCount;
     private EditText etRemoteDir;
+    private ImageView ivSettings;
     private BottomNavigationView bottomNav;
 
-    private PhotoAdapter photoAdapter;
-    private AllFilesAdapter allFilesAdapter;
+    private PhotoAdapter photoAdapter;          // 本地相册
+    private AllFilesAdapter allFilesAdapter;    // 本地全部
+    private int currentView = 0; // 0=相册, 1=全部
+
     private WebDAVClient webdavClient;
     private SharedPreferences prefs;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Set<String> remoteFileNames = new HashSet<>();
-
-    private int currentView = 0; // 0=相册, 1=云端, 2=全部文件
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupRecyclerView();
         loadCurrentConnection();
-        showView(0); // 默认显示相册
+        showPhotoView(); // 默认显示相册
         setupListeners();
     }
 
@@ -84,13 +81,9 @@ public class MainActivity extends AppCompatActivity {
         contentFrame.addView(rvPhotos);
 
         tvConnectionStatus = findViewById(R.id.tv_connection_status);
-        tvFileCount = findViewById(R.id.tv_file_count);
-        tvSelectedCount = findViewById(R.id.tv_selected_count);
-        btnSync = findViewById(R.id.btn_sync);
-        btnCloud = findViewById(R.id.btn_cloud);
-        btnDeleteLocal = findViewById(R.id.btn_delete_local);
-        ivSettings = findViewById(R.id.iv_settings);
+        tvPhotoCount = findViewById(R.id.tv_photo_count);
         etRemoteDir = findViewById(R.id.et_remote_dir);
+        ivSettings = findViewById(R.id.iv_settings);
         bottomNav = findViewById(R.id.bottom_navigation);
     }
 
@@ -101,23 +94,16 @@ public class MainActivity extends AppCompatActivity {
         allFilesAdapter.setShowCloudBadge(true);
     }
 
-    private void showView(int view) {
-        currentView = view;
-        if (view == 0) {
-            rvPhotos.setAdapter(photoAdapter);
-            tvFileCount.setText(photoAdapter.getItemCount() + " 张照片");
-            loadLocalPhotos();
-        } else if (view == 1) {
-            // 云端视图直接跳转 CloudActivity
-            startActivity(new Intent(this, CloudActivity.class));
-            bottomNav.setSelectedItemId(R.id.nav_photos); // 避免陷入循环
-            return;
-        } else if (view == 2) {
-            rvPhotos.setAdapter(allFilesAdapter);
-            tvFileCount.setText(allFilesAdapter.getItemCount() + " 个文件");
-            loadAllFiles();
-        }
-        updateSelectedCount();
+    private void showPhotoView() {
+        rvPhotos.setAdapter(photoAdapter);
+        currentView = 0;
+        loadLocalPhotos();
+    }
+
+    private void showAllFilesView() {
+        rvPhotos.setAdapter(allFilesAdapter);
+        currentView = 1;
+        loadAllFiles();
     }
 
     private void loadCurrentConnection() {
@@ -157,7 +143,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             mainHandler.post(() -> {
-                // 更新两个适配器
+                // 更新两个适配器的云端标记
                 for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
                 }
@@ -172,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadLocalPhotos() {
-        tvFileCount.setText("加载中...");
+        tvPhotoCount.setText("加载中...");
         new Thread(() -> {
             List<PhotoAdapter.PhotoItem> items = new ArrayList<>();
             String[] projection = {MediaStore.Images.Media.DATA, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_MODIFIED};
@@ -205,17 +191,15 @@ public class MainActivity extends AppCompatActivity {
             final List<PhotoAdapter.PhotoItem> finalItems = items;
             mainHandler.post(() -> {
                 photoAdapter.setItems(finalItems);
-                tvFileCount.setText(finalItems.size() + " 张照片");
-                updateSelectedCount();
+                tvPhotoCount.setText(finalItems.size() + " 张");
             });
         }).start();
     }
 
     private void loadAllFiles() {
-        tvFileCount.setText("加载中...");
+        tvPhotoCount.setText("加载中...");
         new Thread(() -> {
             List<AllFilesAdapter.FileItem> items = new ArrayList<>();
-            // 查询所有文件（不限制mimeType）
             String[] projection = {MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.DATE_MODIFIED};
             Cursor cursor = getContentResolver().query(MediaStore.Files.getContentUri("external"),
                     projection, null, null, MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC");
@@ -244,56 +228,30 @@ public class MainActivity extends AppCompatActivity {
             final List<AllFilesAdapter.FileItem> finalItems = items;
             mainHandler.post(() -> {
                 allFilesAdapter.setItems(finalItems);
-                tvFileCount.setText(finalItems.size() + " 个文件");
-                updateSelectedCount();
+                tvPhotoCount.setText(finalItems.size() + " 个");
             });
         }).start();
-    }
-
-    private void updateSelectedCount() {
-        int count = 0;
-        if (currentView == 0) {
-            for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
-                if (item.isSelected) count++;
-            }
-        } else if (currentView == 2) {
-            for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
-                if (item.isSelected) count++;
-            }
-        }
-        tvSelectedCount.setText("已选择 " + count + " 项");
     }
 
     private void setupListeners() {
         ivSettings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
 
-        btnSync.setOnClickListener(v -> syncToCloud());
-
-        btnCloud.setOnClickListener(v -> {
-            if (webdavClient == null) {
-                Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            startActivity(new Intent(this, CloudActivity.class));
-        });
-
-        btnDeleteLocal.setOnClickListener(v -> deleteSelectedLocal());
-
-        // 底部导航切换
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
-            if (id == R.id.nav_photos) {
-                showView(0);
+            if (id == R.id.nav_local_photos) {
+                showPhotoView();
                 return true;
-            } else if (id == R.id.nav_cloud) {
+            } else if (id == R.id.nav_local_all) {
+                showAllFilesView();
+                return true;
+            } else if (id == R.id.nav_cloud_photos || id == R.id.nav_cloud_all) {
                 if (webdavClient == null) {
                     Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
                     return false;
                 }
-                startActivity(new Intent(this, CloudActivity.class));
-                return true;
-            } else if (id == R.id.nav_all_files) {
-                showView(2);
+                Intent intent = new Intent(this, CloudActivity.class);
+                intent.putExtra("type", id == R.id.nav_cloud_photos ? "photo" : "all");
+                startActivity(intent);
                 return true;
             }
             return false;
@@ -303,155 +261,12 @@ public class MainActivity extends AppCompatActivity {
         photoAdapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             photoAdapter.notifyItemChanged(position);
-            updateSelectedCount();
         });
 
         allFilesAdapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             allFilesAdapter.notifyItemChanged(position);
-            updateSelectedCount();
         });
-    }
-
-    private void syncToCloud() {
-        // 收集选中的文件
-        List<Object> selected = new ArrayList<>();
-        if (currentView == 0) {
-            for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
-                if (item.isSelected && item.file != null && item.file.exists()) {
-                    selected.add(item);
-                }
-            }
-        } else {
-            for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
-                if (item.isSelected && item.file != null && item.file.exists()) {
-                    selected.add(item);
-                }
-            }
-        }
-        if (selected.isEmpty()) {
-            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        if (webdavClient == null) {
-            Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        String remoteDir = etRemoteDir.getText().toString().trim();
-        final String finalRemoteDir = remoteDir.isEmpty() ? "" : remoteDir;
-
-        // 创建目录
-        if (!finalRemoteDir.isEmpty()) {
-            new Thread(() -> {
-                boolean dirExists = false;
-                List<String> dirs = webdavClient.listDirectory("");
-                for (String d : dirs) {
-                    if (d.equals(finalRemoteDir + "/") || d.equals(finalRemoteDir)) {
-                        dirExists = true;
-                        break;
-                    }
-                }
-                if (!dirExists) {
-                    boolean created = webdavClient.createDirectory(finalRemoteDir);
-                    mainHandler.post(() -> {
-                        if (created) {
-                            Toast.makeText(MainActivity.this, "目录已创建: /" + finalRemoteDir, Toast.LENGTH_SHORT).show();
-                            performUpload(selected, finalRemoteDir);
-                        } else {
-                            Toast.makeText(MainActivity.this, "创建目录失败: /" + finalRemoteDir, Toast.LENGTH_LONG).show();
-                        }
-                    });
-                } else {
-                    mainHandler.post(() -> performUpload(selected, finalRemoteDir));
-                }
-            }).start();
-        } else {
-            performUpload(selected, "");
-        }
-    }
-
-    private void performUpload(List<Object> selected, final String remoteDir) {
-        Toast.makeText(this, "开始同步 " + selected.size() + " 个文件到 /" + remoteDir, Toast.LENGTH_SHORT).show();
-        btnSync.setEnabled(false);
-
-        new Thread(() -> {
-            int success = 0, fail = 0;
-            for (Object obj : selected) {
-                File file = null;
-                if (obj instanceof PhotoAdapter.PhotoItem) {
-                    file = ((PhotoAdapter.PhotoItem) obj).file;
-                } else if (obj instanceof AllFilesAdapter.FileItem) {
-                    file = ((AllFilesAdapter.FileItem) obj).file;
-                }
-                if (file != null) {
-                    boolean ok = webdavClient.uploadFile(remoteDir, file);
-                    if (ok) success++;
-                    else fail++;
-                }
-            }
-            final int finalSuccess = success;
-            final int finalFail = fail;
-            mainHandler.post(() -> {
-                btnSync.setEnabled(true);
-                Toast.makeText(MainActivity.this, "同步完成: 成功 " + finalSuccess + ", 失败 " + finalFail, Toast.LENGTH_LONG).show();
-                // 清除选中
-                if (currentView == 0) {
-                    for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) item.isSelected = false;
-                    photoAdapter.notifyDataSetChanged();
-                } else {
-                    for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) item.isSelected = false;
-                    allFilesAdapter.notifyDataSetChanged();
-                }
-                updateSelectedCount();
-                loadRemoteFileList();
-            });
-        }).start();
-    }
-
-    private void deleteSelectedLocal() {
-        List<Object> selected = new ArrayList<>();
-        if (currentView == 0) {
-            for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
-                if (item.isSelected && item.file != null && item.file.exists()) {
-                    selected.add(item);
-                }
-            }
-        } else {
-            for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
-                if (item.isSelected && item.file != null && item.file.exists()) {
-                    selected.add(item);
-                }
-            }
-        }
-        if (selected.isEmpty()) {
-            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        new AlertDialog.Builder(this)
-                .setTitle("删除本地文件")
-                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？")
-                .setPositiveButton("删除", (dialog, which) -> {
-                    int success = 0;
-                    for (Object obj : selected) {
-                        File file = null;
-                        if (obj instanceof PhotoAdapter.PhotoItem) {
-                            file = ((PhotoAdapter.PhotoItem) obj).file;
-                        } else if (obj instanceof AllFilesAdapter.FileItem) {
-                            file = ((AllFilesAdapter.FileItem) obj).file;
-                        }
-                        if (file != null && file.delete()) success++;
-                    }
-                    final int finalSuccess = success;
-                    mainHandler.post(() -> {
-                        Toast.makeText(MainActivity.this, "已删除 " + finalSuccess + " 个本地文件", Toast.LENGTH_SHORT).show();
-                        if (currentView == 0) loadLocalPhotos();
-                        else loadAllFiles();
-                    });
-                })
-                .setNegativeButton("取消", null)
-                .show();
     }
 
     @Override
@@ -459,6 +274,6 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         loadCurrentConnection();
         if (currentView == 0) loadLocalPhotos();
-        else if (currentView == 2) loadAllFiles();
+        else loadAllFiles();
     }
 }
