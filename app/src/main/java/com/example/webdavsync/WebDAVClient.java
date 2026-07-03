@@ -28,11 +28,7 @@ public class WebDAVClient {
                 .build();
     }
 
-    // ✅ getServerUrl 方法放在类内部
-    public String getServerUrl() {
-        return serverUrl;
-    }
-
+    public String getServerUrl() { return serverUrl; }
     public String getUsername() { return username; }
     public String getPassword() { return password; }
 
