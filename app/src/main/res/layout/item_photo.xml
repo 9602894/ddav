@@ -37,7 +37,6 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
-            <!-- ★ 云朵标记（使用 drawable 背景） -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -45,8 +44,8 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignStart="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:text="☁️"
@@ -55,7 +54,6 @@
                 android:background="@drawable/badge_cloud_bg"
                 android:visibility="gone" />
 
-            <!-- ★ 手机标记（使用 drawable 背景） -->
             <TextView
                 android:id="@+id/tv_local_badge"
                 android:layout_width="wrap_content"
@@ -63,8 +61,8 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_toEndOf="@+id/tv_cloud_badge"
                 android:layout_margin="6dp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:text="📱"
@@ -85,7 +83,6 @@
                 android:singleLine="true"
                 android:ellipsize="middle" />
 
-            <!-- 透明复选框 -->
             <CheckBox
                 android:id="@+id/cb_select"
                 android:layout_width="28dp"
