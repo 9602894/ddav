@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -20,8 +19,6 @@ import java.util.Collections;
 import java.util.List;
 
 public class CloudActivity extends AppCompatActivity {
-
-    private static final String TAG = "CloudActivity";
 
     private RecyclerView rvCloud;
     private TextView tvCloudPath, tvCloudCount, tvCloudSelected;
@@ -69,10 +66,12 @@ public class CloudActivity extends AppCompatActivity {
         rvCloud.setAdapter(adapter);
 
         adapter.setOnItemClickListener((item, position) -> {
-            Log.d(TAG, "点击: " + item.name);
-            if (item.name.endsWith("/")) {
-                String newPath = currentPath.isEmpty() ? item.name.substring(0, item.name.length() - 1)
-                        : currentPath + "/" + item.name.substring(0, item.name.length() - 1);
+            // 判断是否为目录（支持不以 / 结尾，通过 listDirectory 返回的条目可能不带 /）
+            // 我们通过检查 item.name 是否以 '/' 结尾，或者检查是否没有扩展名（简单判断）
+            boolean isDirectory = item.name.endsWith("/") || !item.name.contains(".");
+            if (isDirectory) {
+                String dirName = item.name.endsWith("/") ? item.name.substring(0, item.name.length() - 1) : item.name;
+                String newPath = currentPath.isEmpty() ? dirName : currentPath + "/" + dirName;
                 loadDirectory(newPath);
             } else {
                 item.isSelected = !item.isSelected;
@@ -82,8 +81,7 @@ public class CloudActivity extends AppCompatActivity {
         });
 
         adapter.setOnItemLongClickListener((item, position) -> {
-            Log.d(TAG, "长按: " + item.name);
-            if (!item.name.endsWith("/")) {
+            if (!item.name.endsWith("/") && item.name.contains(".")) {
                 showDeleteDialog(item, position);
             }
         });
@@ -91,7 +89,6 @@ public class CloudActivity extends AppCompatActivity {
         loadDirectory("");
 
         tvCloudPath.setOnClickListener(v -> {
-            Log.d(TAG, "点击路径，当前路径: " + currentPath);
             if (!currentPath.isEmpty()) {
                 loadDirectory("");
             } else {
@@ -122,7 +119,6 @@ public class CloudActivity extends AppCompatActivity {
                 if (f.isFile()) localFileNames.add(f.getName());
             }
         }
-        Log.d(TAG, "本地文件列表: " + localFileNames.toString());
     }
 
     private void loadDirectory(String path) {
@@ -132,7 +128,6 @@ public class CloudActivity extends AppCompatActivity {
 
         new Thread(() -> {
             List<String> items = client.listDirectory(currentPath);
-            Log.d(TAG, "从服务器获取的列表: " + items.toString());
             mainHandler.post(() -> {
                 List<PhotoAdapter.PhotoItem> list = new ArrayList<>();
 
@@ -152,8 +147,10 @@ public class CloudActivity extends AppCompatActivity {
                             fi.name = item;
                             fi.displayName = item;
                             fi.isOnCloud = true;
-                            fi.isOnLocal = !item.endsWith("/") && localFileNames.contains(item);
-                            if (!item.endsWith("/")) {
+                            // 判断是否为目录（以 / 结尾或无扩展名）
+                            boolean isDir = item.endsWith("/") || !item.contains(".");
+                            fi.isOnLocal = !isDir && localFileNames.contains(item);
+                            if (!isDir) {
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
                                 fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                                 String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
@@ -184,13 +181,12 @@ public class CloudActivity extends AppCompatActivity {
             if (item.isSelected) count++;
         }
         tvCloudSelected.setText("已选择 " + count + " 项");
-        Log.d(TAG, "选中数量: " + count);
     }
 
     private void downloadSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/")) {
+            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
                 selected.add(item);
             }
         }
@@ -240,7 +236,7 @@ public class CloudActivity extends AppCompatActivity {
     private void deleteSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/")) {
+            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
                 selected.add(item);
             }
         }
@@ -275,7 +271,7 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void showDeleteDialog(PhotoAdapter.PhotoItem item, int position) {
-        if (item.name.endsWith("/")) {
+        if (item.name.endsWith("/") || !item.name.contains(".")) {
             Toast.makeText(this, "不能删除目录", Toast.LENGTH_SHORT).show();
             return;
         }
