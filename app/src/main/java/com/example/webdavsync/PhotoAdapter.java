@@ -31,10 +31,12 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         void onItemClick(PhotoItem item, int position);
     }
 
-    // 移除长按监听接口，不再需要
-    // public interface OnItemLongClickListener { ... }
+    public interface OnItemLongClickListener {
+        void onItemLongClick(PhotoItem item, int position);
+    }
 
     private OnItemClickListener clickListener;
+    private OnItemLongClickListener longClickListener;
 
     public PhotoAdapter(Context context) {
         this.context = context;
@@ -54,6 +56,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     public void setCloudView(boolean isCloud) { this.isCloudView = isCloud; }
 
     public void setOnItemClickListener(OnItemClickListener listener) { this.clickListener = listener; }
+    public void setOnItemLongClickListener(OnItemLongClickListener listener) { this.longClickListener = listener; }
 
     @NonNull
     @Override
@@ -138,26 +141,22 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // ★ 点击事件：切换选中状态，并回调
+        // 点击事件（交给 Activity 处理，但我们保留点击自己处理以避免冲突）
         holder.itemView.setOnClickListener(v -> {
-            item.isSelected = !item.isSelected;
-            holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) {
                 clickListener.onItemClick(item, position);
             }
         });
 
-        // 复选框点击同样切换
+        // 长按事件（禁用）
+        holder.itemView.setOnLongClickListener(null);
+
+        // 复选框点击同步
         holder.cbSelect.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
-            if (clickListener != null) {
-                clickListener.onItemClick(item, position);
-            }
+            if (clickListener != null) clickListener.onItemClick(item, position);
         });
-
-        // ★ 移除长按监听，不再触发删除
-        // holder.itemView.setOnLongClickListener(null);
     }
 
     @Override
