@@ -10,7 +10,7 @@
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:scaleType="centerCrop"
-        android:src="@drawable/ic_file" />
+        android:src="@android:drawable/ic_menu_gallery" />
 
     <TextView
         android:id="@+id/tv_name"
