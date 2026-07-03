@@ -32,7 +32,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     }
 
     public interface OnItemLongClickListener {
-        void onItemLongClick(PhotoItem item, int position);
+        void onItemLongClick(PhotoItem item, int position); // void，不返回值
     }
 
     private OnItemClickListener clickListener;
@@ -73,7 +73,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         // ★ 彩色边框：选中时背景变蓝
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7")); // 浅蓝
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7")); // 浅蓝色
             holder.cardView.setCardElevation(8f);
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
