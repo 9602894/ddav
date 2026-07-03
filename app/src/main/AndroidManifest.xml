@@ -4,21 +4,24 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />  <!-- Android 9 及以下需要 -->
+        android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
         android:label="@string/app_name"
         android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true">   <!-- 兼容 Android 10 以下 -->
-        <activity
-            android:name=".MainActivity"
-            android:exported="true">
+        android:requestLegacyExternalStorage="true">
+        <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- 新增 -->
+        <activity android:name=".RemoteBrowseActivity" />
+        <activity android:name=".UploadActivity" />
+        <activity android:name=".SyncActivity" />
+        <activity android:name=".CloudFilesActivity" />
     </application>
 </manifest>
