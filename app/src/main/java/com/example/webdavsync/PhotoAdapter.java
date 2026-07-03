@@ -1,6 +1,8 @@
 package com.example.webdavsync;
 
 import android.content.Context;
+import android.media.ThumbnailUtils;
+import android.provider.MediaStore;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -19,12 +21,14 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
     private Context context;
     private List<PhotoItem> items = new ArrayList<>();
-    private boolean showCloudBadge = false;
-    private boolean isCloudView = false; // 是否云端视图
+    private boolean showCloudBadge = false;   // 本地视图显示云端标记
+    private boolean showLocalBadge = false;   // 云端视图显示本地标记
+    private boolean isCloudView = false;
     private OnItemClickListener listener;
 
     public interface OnItemClickListener {
         void onItemClick(PhotoItem item, int position);
+        void onItemLongClick(PhotoItem item, int position); // 用于删除
     }
 
     public PhotoAdapter(Context context) {
@@ -42,6 +46,10 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
     public void setShowCloudBadge(boolean show) {
         this.showCloudBadge = show;
+    }
+
+    public void setShowLocalBadge(boolean show) {
+        this.showLocalBadge = show;
     }
 
     public void setCloudView(boolean isCloud) {
@@ -65,21 +73,34 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
+        // 显示云朵标记（本地视图）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
+        // 显示手机标记（云端视图）
+        if (showLocalBadge && item.isOnLocal) {
+            holder.tvLocalBadge.setVisibility(View.VISIBLE);
+        } else {
+            holder.tvLocalBadge.setVisibility(View.GONE);
+        }
+
+        // 视频标记
         if (item.isVideo) {
             holder.ivVideoBadge.setVisibility(View.VISIBLE);
         } else {
             holder.ivVideoBadge.setVisibility(View.GONE);
         }
 
+        // 显示文件名（在缩略图下方）
+        holder.tvName.setText(item.displayName);
+        holder.tvName.setVisibility(View.VISIBLE);
+
         // 加载缩略图
         if (isCloudView && item.remoteUrl != null) {
-            // 云端：使用远程 URL 加载（通过 Glide + OkHttp 带认证）
+            // 云端：使用远程 URL
             Glide.with(context)
                     .load(item.remoteUrl)
                     .apply(new RequestOptions()
@@ -89,24 +110,41 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
                             .error(android.R.drawable.ic_menu_gallery))
                     .into(holder.ivThumbnail);
         } else if (item.file != null && item.file.exists()) {
-            // 本地文件
-            Glide.with(context)
-                    .load(item.file)
-                    .apply(new RequestOptions()
-                            .centerCrop()
-                            .override(300, 300)
-                            .placeholder(android.R.drawable.ic_menu_gallery)
-                            .error(android.R.drawable.ic_menu_gallery))
-                    .into(holder.ivThumbnail);
+            // 本地文件：判断是否为视频，使用视频第一帧
+            if (item.isVideo) {
+                android.graphics.Bitmap bitmap = ThumbnailUtils.createVideoThumbnail(
+                        item.file.getAbsolutePath(),
+                        MediaStore.Video.Thumbnails.MINI_KIND);
+                if (bitmap != null) {
+                    holder.ivThumbnail.setImageBitmap(bitmap);
+                } else {
+                    holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+                }
+            } else {
+                Glide.with(context)
+                        .load(item.file)
+                        .apply(new RequestOptions()
+                                .centerCrop()
+                                .override(300, 300)
+                                .placeholder(android.R.drawable.ic_menu_gallery)
+                                .error(android.R.drawable.ic_menu_gallery))
+                        .into(holder.ivThumbnail);
+            }
         } else {
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 点击事件
+        // 点击选中
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
             if (listener != null) listener.onItemClick(item, position);
+        });
+
+        // 长按删除（回调）
+        holder.itemView.setOnLongClickListener(v -> {
+            if (listener != null) listener.onItemLongClick(item, position);
+            return true;
         });
 
         holder.cbSelect.setOnClickListener(v -> {
@@ -123,7 +161,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivThumbnail, ivVideoBadge;
-        TextView tvName, tvCloudBadge;
+        TextView tvName, tvCloudBadge, tvLocalBadge;
         CheckBox cbSelect;
 
         public ViewHolder(@NonNull View itemView) {
@@ -132,21 +170,25 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             ivVideoBadge = itemView.findViewById(R.id.iv_video_badge);
             tvName = itemView.findViewById(R.id.tv_name);
             tvCloudBadge = itemView.findViewById(R.id.tv_cloud_badge);
+            tvLocalBadge = itemView.findViewById(R.id.tv_local_badge);
             cbSelect = itemView.findViewById(R.id.cb_select);
         }
     }
 
     public static class PhotoItem {
         public String name;
+        public String displayName;
         public File file;
-        public String remoteUrl;      // 云端文件的完整 URL
+        public String remoteUrl;
         public boolean isSelected;
         public boolean isOnCloud;
+        public boolean isOnLocal;
         public boolean isVideo;
         public long dateModified;
 
         public PhotoItem(String name) {
             this.name = name;
+            this.displayName = name;
         }
     }
 }
