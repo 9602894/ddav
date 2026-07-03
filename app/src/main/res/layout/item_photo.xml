@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:card_view="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="2dp">
 
     <androidx.cardview.widget.CardView
-        xmlns:card_view="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/card_view"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         card_view:cardCornerRadius="4dp"
-        card_view:cardElevation="1dp"
+        card_view:cardElevation="2dp"
         android:foreground="?android:attr/selectableItemBackground">
 
         <RelativeLayout
@@ -38,7 +39,7 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
-            <!-- 云朵标记（本地视图） -->
+            <!-- 云朵标记（透明背景彩色） -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -46,35 +47,29 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignStart="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-                android:paddingLeft="6dp"
-                android:paddingRight="6dp"
-                android:paddingTop="2dp"
-                android:paddingBottom="2dp"
+                android:padding="2dp"
                 android:text="☁️"
-                android:textSize="16sp"
-                android:background="#cc000000"
-                android:textColor="#ffffff"
+                android:textSize="20sp"
+                android:textColor="@android:color/holo_blue_dark"
+                android:background="@android:color/transparent"
                 android:visibility="gone" />
 
-            <!-- 手机标记（云端视图） -->
+            <!-- 手机标记（透明背景彩色） -->
             <TextView
                 android:id="@+id/tv_local_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignTop="@+id/iv_thumbnail"
-                android:layout_alignStart="@+id/iv_thumbnail"
+                android:layout_toEndOf="@+id/tv_cloud_badge"
                 android:layout_margin="6dp"
-                android:paddingLeft="6dp"
-                android:paddingRight="6dp"
-                android:paddingTop="2dp"
-                android:paddingBottom="2dp"
+                android:padding="2dp"
                 android:text="📱"
-                android:textSize="16sp"
-                android:background="#cc000000"
-                android:textColor="#ffffff"
+                android:textSize="20sp"
+                android:textColor="@android:color/holo_green_dark"
+                android:background="@android:color/transparent"
                 android:visibility="gone" />
 
-            <!-- 文件名（缩略图下方） -->
+            <!-- 文件名 -->
             <TextView
                 android:id="@+id/tv_name"
                 android:layout_width="match_parent"
