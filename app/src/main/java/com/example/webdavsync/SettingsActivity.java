@@ -53,8 +53,8 @@ public class SettingsActivity extends AppCompatActivity {
         String username = etUsername.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
 
-        if (server.isEmpty() || username.isEmpty()) {
-            tvStatus.setText("请填写服务器地址和用户名");
+        if (server.isEmpty()) {
+            tvStatus.setText("请填写服务器地址");
             return;
         }
 
@@ -62,6 +62,7 @@ public class SettingsActivity extends AppCompatActivity {
         btnTest.setEnabled(false);
 
         new Thread(() -> {
+            // 用户名和密码可以为空，WebDAVClient 会处理
             WebDAVClient client = new WebDAVClient(server, username, password);
             boolean ok = client.testConnection();
             mainHandler.post(() -> {
@@ -82,8 +83,8 @@ public class SettingsActivity extends AppCompatActivity {
         String username = etUsername.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
 
-        if (server.isEmpty() || username.isEmpty()) {
-            tvStatus.setText("请填写服务器地址和用户名");
+        if (server.isEmpty()) {
+            tvStatus.setText("请填写服务器地址");
             return;
         }
 
