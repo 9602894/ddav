@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSIONS = 100;
     private EditText etServerUrl, etUsername, etPassword, etRemotePath, etLocalPath;
-    private Button btnTest, btnUpload, btnSync, btnCloud, btnBrowseRemote;
+    private Button btnTest, btnUpload, btnSync, btnCloud, btnBrowseRemote, btnSave;
     private SharedPreferences prefs;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -40,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
         btnSync = findViewById(R.id.btn_sync);
         btnCloud = findViewById(R.id.btn_cloud);
         btnBrowseRemote = findViewById(R.id.btn_browse_remote);
+        btnSave = findViewById(R.id.btn_save);
 
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
         loadSettings();
@@ -53,23 +54,15 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        // 自动保存（输入即存）
-        android.text.TextWatcher watcher = new android.text.TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
-            @Override public void afterTextChanged(android.text.Editable s) { saveSettings(); }
-        };
-        etServerUrl.addTextChangedListener(watcher);
-        etUsername.addTextChangedListener(watcher);
-        etPassword.addTextChangedListener(watcher);
-        etRemotePath.addTextChangedListener(watcher);
-        etLocalPath.addTextChangedListener(watcher);
-
         btnTest.setOnClickListener(v -> testConnection());
         btnBrowseRemote.setOnClickListener(v -> startRemoteBrowse());
         btnUpload.setOnClickListener(v -> startUpload());
         btnSync.setOnClickListener(v -> startSync());
         btnCloud.setOnClickListener(v -> startCloud());
+        btnSave.setOnClickListener(v -> {
+            saveSettings();
+            Toast.makeText(this, "配置已保存", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void loadSettings() {
@@ -124,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
             String selected = data.getStringExtra("selected_path");
             if (selected != null) {
                 etRemotePath.setText(selected);
-                saveSettings();
+                saveSettings(); // 自动保存选中的远程路径
                 Toast.makeText(this, "远程目录已设置为: " + selected, Toast.LENGTH_SHORT).show();
             }
         }
@@ -136,6 +129,7 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("username", etUsername.getText().toString().trim());
         intent.putExtra("password", etPassword.getText().toString().trim());
         intent.putExtra("remote_path", etRemotePath.getText().toString().trim());
+        intent.putExtra("local_path", etLocalPath.getText().toString().trim());
         startActivity(intent);
     }
 
