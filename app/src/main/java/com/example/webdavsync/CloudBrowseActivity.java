@@ -45,7 +45,9 @@ public class CloudBrowseActivity extends AppCompatActivity {
             return;
         }
 
+        // 3列网格
         rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
+        // 云端适配器：不加载缩略图，只显示文件名和图标
         adapter = new FileAdapter(this, false);
         rvCloud.setAdapter(adapter);
 
@@ -72,40 +74,38 @@ public class CloudBrowseActivity extends AppCompatActivity {
         tvCloudStatus.setText("加载中...");
 
         new Thread(() -> {
-            try {
-                List<String> items = client.listDirectory(currentPath);
-                mainHandler.post(() -> {
-                    List<FileAdapter.FileItem> list = new ArrayList<>();
-                    if (items != null && !items.isEmpty()) {
-                        boolean hasError = false;
-                        for (String item : items) {
-                            if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")) {
-                                tvCloudStatus.setText(item);
-                                hasError = true;
-                                break;
-                            }
+            List<String> items = client.listDirectory(currentPath);
+            mainHandler.post(() -> {
+                List<FileAdapter.FileItem> list = new ArrayList<>();
+
+                if (items != null && !items.isEmpty()) {
+                    boolean hasError = false;
+                    for (String item : items) {
+                        if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")) {
+                            tvCloudStatus.setText(item);
+                            hasError = true;
+                            break;
                         }
-                        if (!hasError) {
-                            for (String item : items) {
-                                FileAdapter.FileItem fi = new FileAdapter.FileItem(item);
-                                fi.displayName = item;
-                                fi.remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
-                                fi.remoteUrl = client.getServerUrl() + "/" + fi.remotePath;
-                                fi.isVideo = isVideoFile(item);
-                                list.add(fi);
-                            }
-                            tvCloudStatus.setText(list.size() + " 项");
-                        }
-                    } else {
-                        tvCloudStatus.setText("空目录");
                     }
-                    adapter.setItems(list);
-                    updateSelectedCount();
-                });
-            } catch (Exception e) {
-                e.printStackTrace();
-                mainHandler.post(() -> tvCloudStatus.setText("加载出错: " + e.getMessage()));
-            }
+
+                    if (!hasError) {
+                        for (String item : items) {
+                            FileAdapter.FileItem fi = new FileAdapter.FileItem(item);
+                            fi.displayName = item;
+                            fi.remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
+                            // 不设置 remoteUrl，避免 Glide 加载
+                            fi.isVideo = isVideoFile(item);
+                            list.add(fi);
+                        }
+                        tvCloudStatus.setText(list.size() + " 项");
+                    }
+                } else {
+                    tvCloudStatus.setText("空目录");
+                }
+
+                adapter.setItems(list);
+                updateSelectedCount();
+            });
         }).start();
     }
 
@@ -141,27 +141,22 @@ public class CloudBrowseActivity extends AppCompatActivity {
         new Thread(() -> {
             int success = 0, fail = 0;
             for (FileAdapter.FileItem fi : selected) {
-                try {
-                    File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    if (!downloadDir.exists()) downloadDir.mkdirs();
+                File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                if (!downloadDir.exists()) downloadDir.mkdirs();
 
-                    File destFile = new File(downloadDir, fi.name);
-                    int count = 1;
-                    String name = fi.name;
-                    String ext = "";
-                    int dot = fi.name.lastIndexOf('.');
-                    if (dot > 0) { name = fi.name.substring(0, dot); ext = fi.name.substring(dot); }
-                    while (destFile.exists()) {
-                        destFile = new File(downloadDir, name + "_" + count + ext);
-                        count++;
-                    }
-
-                    boolean ok = client.downloadFile(fi.remotePath, destFile);
-                    if (ok) success++; else fail++;
-                } catch (Exception e) {
-                    fail++;
-                    e.printStackTrace();
+                File destFile = new File(downloadDir, fi.name);
+                int count = 1;
+                String name = fi.name;
+                String ext = "";
+                int dot = fi.name.lastIndexOf('.');
+                if (dot > 0) { name = fi.name.substring(0, dot); ext = fi.name.substring(dot); }
+                while (destFile.exists()) {
+                    destFile = new File(downloadDir, name + "_" + count + ext);
+                    count++;
                 }
+
+                boolean ok = client.downloadFile(fi.remotePath, destFile);
+                if (ok) success++; else fail++;
             }
 
             final int finalSuccess = success;
@@ -172,7 +167,7 @@ public class CloudBrowseActivity extends AppCompatActivity {
                 Toast.makeText(CloudBrowseActivity.this,
                         "下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
                         Toast.LENGTH_LONG).show();
-                // 清除选中状态
+                // 清空选中
                 for (FileAdapter.FileItem fi : adapter.getItems()) fi.isSelected = false;
                 adapter.notifyDataSetChanged();
                 updateSelectedCount();
