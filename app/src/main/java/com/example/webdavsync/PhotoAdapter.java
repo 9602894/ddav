@@ -71,30 +71,33 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 彩色边框
+        // ★ 选中状态：蓝色边框 + 半透明蓝色覆盖层（非常明显）
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7"));
-            holder.cardView.setCardElevation(8f);
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7")); // 浅蓝背景
+            holder.cardView.setCardElevation(12f);
+            // 添加一个半透明覆盖层（在布局中已有，但我们可以用边框颜色更明显）
+            holder.vSelectedOverlay.setVisibility(View.VISIBLE);
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
+            holder.vSelectedOverlay.setVisibility(View.GONE);
         }
 
-        // 云朵标记
+        // ★ 云朵标记（彩色透明背景，无白色方块）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
-            holder.tvCloudBadge.setTextColor(Color.parseColor("#1E88E5"));
+            holder.tvCloudBadge.setTextColor(Color.parseColor("#1E88E5")); // 蓝色
             holder.tvCloudBadge.setBackgroundColor(Color.TRANSPARENT);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记
+        // ★ 手机标记（彩色透明背景）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
-            holder.tvLocalBadge.setTextColor(Color.parseColor("#43A047"));
+            holder.tvLocalBadge.setTextColor(Color.parseColor("#43A047")); // 绿色
             holder.tvLocalBadge.setBackgroundColor(Color.TRANSPARENT);
         } else {
             holder.tvLocalBadge.setVisibility(View.GONE);
@@ -141,17 +144,23 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 点击事件（交给 Activity 处理，但我们保留点击自己处理以避免冲突）
+        // ★ 点击选中（不是长按）
         holder.itemView.setOnClickListener(v -> {
-            if (clickListener != null) {
-                clickListener.onItemClick(item, position);
+            // 如果是云端视图且是目录，则进入子目录（在 CloudActivity 中处理）
+            // 这里只处理普通文件
+            if (!isCloudView || !item.name.endsWith("/")) {
+                item.isSelected = !item.isSelected;
+                holder.cbSelect.setChecked(item.isSelected);
+                if (clickListener != null) clickListener.onItemClick(item, position);
             }
         });
 
-        // 长按事件（禁用）
-        holder.itemView.setOnLongClickListener(null);
+        // ★ 长按不再触发删除（改为点击删除按钮）
+        holder.itemView.setOnLongClickListener(v -> {
+            // 长按只做反馈，不触发删除
+            return false;
+        });
 
-        // 复选框点击同步
         holder.cbSelect.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
@@ -169,6 +178,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         TextView tvName, tvCloudBadge, tvLocalBadge;
         CheckBox cbSelect;
         CardView cardView;
+        View vSelectedOverlay; // 选中覆盖层
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -179,6 +189,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             tvLocalBadge = itemView.findViewById(R.id.tv_local_badge);
             cbSelect = itemView.findViewById(R.id.cb_select);
             cardView = itemView.findViewById(R.id.card_view);
+            vSelectedOverlay = itemView.findViewById(R.id.v_selected_overlay);
         }
     }
 
