@@ -11,8 +11,8 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.PhoSync"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
-        android:icon="@android:drawable/ic_menu_gallery">  <!-- 使用系统图标 -->
+        android:requestLegacyExternalStorage="true">
+        <!-- 移除 android:icon 属性，使用系统默认图标 -->
 
         <activity
             android:name=".MainActivity"
