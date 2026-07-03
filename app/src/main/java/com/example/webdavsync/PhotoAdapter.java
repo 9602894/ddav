@@ -71,33 +71,35 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ Pho 风格选中效果：亮蓝色边框 + 高阴影
+        // ★ Pho 风格选中效果：醒目橙色边框 + 浅橙色背景 + 高阴影
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#E3F2FD")); // 淡蓝背景
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#FFF3E0")); // 浅橙色
             holder.cardView.setCardElevation(16f);
-            // 模拟边框：用 CardView 的 stroke 无法直接实现，用背景色替代
-            // 这里我们使用一个带边框的 drawable，但为简化，用深色阴影表示选中
+            holder.cardView.setStrokeColor(Color.parseColor("#FF9800"));   // 橙色边框
+            holder.cardView.setStrokeWidth(4);                             // 4dp
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
+            holder.cardView.setStrokeColor(Color.TRANSPARENT);
+            holder.cardView.setStrokeWidth(0);
         }
 
-        // ★ 云朵标记（Pho 风格：半透明蓝色背景 + 白色文字）
+        // ★ 云朵标记（半透明蓝色背景，白色文字，圆角）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
             holder.tvCloudBadge.setTextColor(Color.WHITE);
-            holder.tvCloudBadge.setBackgroundColor(Color.parseColor("#801E88E5"));
+            holder.tvCloudBadge.setBackgroundResource(R.drawable.badge_cloud_bg);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记（Pho 风格：半透明绿色背景 + 白色文字）
+        // ★ 手机标记（半透明绿色背景，白色文字，圆角）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
             holder.tvLocalBadge.setTextColor(Color.WHITE);
-            holder.tvLocalBadge.setBackgroundColor(Color.parseColor("#8043A047"));
+            holder.tvLocalBadge.setBackgroundResource(R.drawable.badge_local_bg);
         } else {
             holder.tvLocalBadge.setVisibility(View.GONE);
         }
@@ -143,7 +145,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // ★ 点击切换选中（Pho 风格：单击选择）
+        // ★ 单击切换选中（Pho 风格）
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
