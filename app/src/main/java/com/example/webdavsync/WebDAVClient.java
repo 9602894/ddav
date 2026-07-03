@@ -17,7 +17,6 @@ public class WebDAVClient {
     private final String password;
 
     public WebDAVClient(String serverUrl, String username, String password) {
-        // 确保 serverUrl 不以 / 结尾
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
         this.username = username;
         this.password = password;
@@ -25,10 +24,6 @@ public class WebDAVClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
-    }
-
-    public String getServerUrl() {
-        return serverUrl;
     }
 
     private Request.Builder authRequest() {
@@ -52,11 +47,6 @@ public class WebDAVClient {
         }
     }
 
-    /**
-     * 列出指定路径下的文件和目录
-     * @param path 相对路径，如 "" 或 "photos" 或 "photos/2024"
-     * @return 文件名列表（目录以 / 结尾）
-     */
     public List<String> listDirectory(String path) {
         List<String> entries = new ArrayList<>();
         try {
@@ -87,14 +77,11 @@ public class WebDAVClient {
 
                 while (matcher.find()) {
                     String href = matcher.group(1);
-                    // 跳过自身
                     if (href.equals(baseUrl) || href.equals(url + "/") || href.equals(url)) {
                         continue;
                     }
-                    // 提取相对路径
                     String relative = href.replace(serverUrl + "/", "");
                     if (!relative.isEmpty()) {
-                        // 确保目录以 / 结尾
                         if (href.endsWith("/") && !relative.endsWith("/")) {
                             relative = relative + "/";
                         }
@@ -109,24 +96,9 @@ public class WebDAVClient {
         return entries;
     }
 
-    public boolean fileExists(String remotePath) {
-        try {
-            String url = serverUrl + "/" + remotePath.replace("//", "/");
-            Request request = authRequest()
-                    .url(url)
-                    .head()
-                    .build();
-            try (Response response = client.newCall(request).execute()) {
-                return response.isSuccessful();
-            }
-        } catch (IOException e) {
-            return false;
-        }
-    }
-
     public boolean uploadFile(String remoteDir, File localFile) {
         try {
-            String remotePath = remoteDir == null || remoteDir.isEmpty() ? localFile.getName()
+            String remotePath = (remoteDir == null || remoteDir.isEmpty()) ? localFile.getName()
                     : remoteDir + "/" + localFile.getName();
             remotePath = remotePath.replace("//", "/");
             String url = serverUrl + "/" + remotePath;
@@ -146,19 +118,17 @@ public class WebDAVClient {
             return false;
         }
     }
+}
 
-    public boolean createDirectory(String remoteDir) {
-        try {
-            String url = serverUrl + "/" + remoteDir.replace("//", "/") + "/";
-            Request request = authRequest()
-                    .url(url)
-                    .method("MKCOL", null)
-                    .build();
-            try (Response response = client.newCall(request).execute()) {
-                return response.isSuccessful() || response.code() == 405; // 405 表示已存在
-            }
-        } catch (IOException e) {
-            return false;
-        }
+// 全局单例持有者
+class WebDAVClientHolder {
+    private static WebDAVClient client;
+
+    public static void setClient(WebDAVClient c) {
+        client = c;
+    }
+
+    public static WebDAVClient getClient() {
+        return client;
     }
 }
