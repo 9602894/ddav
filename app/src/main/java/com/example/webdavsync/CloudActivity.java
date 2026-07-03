@@ -65,11 +65,9 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
-        // ★ Pho 风格点击：目录进入，文件选中
         adapter.setOnItemClickListener((item, position) -> {
-            // ★ 判断目录：以 '/' 结尾 或 从服务器返回时已标记为目录
-            boolean isDir = item.name.endsWith("/");
-            if (isDir) {
+            // ★ 判断目录：名称以 '/' 结尾
+            if (item.name.endsWith("/")) {
                 // 进入子目录（移除末尾的 /）
                 String subPath = item.name.substring(0, item.name.length() - 1);
                 String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
@@ -140,12 +138,16 @@ public class CloudActivity extends AppCompatActivity {
 
                     if (!hasError) {
                         for (String item : items) {
-                            PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
-                            fi.name = item;
-                            fi.displayName = item;
+                            // ★ 确保目录项以 '/' 结尾
+                            String displayName = item;
+                            if (!item.endsWith("/") && !item.contains(".")) {
+                                displayName = item + "/";
+                            }
+                            PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(displayName);
+                            fi.name = displayName;
+                            fi.displayName = displayName;
                             fi.isOnCloud = true;
-                            // ★ 判断是否为目录
-                            boolean isDir = item.endsWith("/");
+                            boolean isDir = displayName.endsWith("/");
                             fi.isOnLocal = !isDir && localFileNames.contains(item);
                             if (!isDir) {
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
