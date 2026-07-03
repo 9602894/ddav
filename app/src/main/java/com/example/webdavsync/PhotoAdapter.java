@@ -31,12 +31,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         void onItemClick(PhotoItem item, int position);
     }
 
-    public interface OnItemLongClickListener {
-        void onItemLongClick(PhotoItem item, int position);
-    }
-
     private OnItemClickListener clickListener;
-    private OnItemLongClickListener longClickListener;
 
     public PhotoAdapter(Context context) {
         this.context = context;
@@ -55,8 +50,9 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     public void setShowLocalBadge(boolean show) { this.showLocalBadge = show; }
     public void setCloudView(boolean isCloud) { this.isCloudView = isCloud; }
 
-    public void setOnItemClickListener(OnItemClickListener listener) { this.clickListener = listener; }
-    public void setOnItemLongClickListener(OnItemLongClickListener listener) { this.longClickListener = listener; }
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.clickListener = listener;
+    }
 
     @NonNull
     @Override
@@ -71,16 +67,16 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ Pho 风格选中效果：深色背景 + 高阴影
+        // ★ 强制视觉选中：亮橙色背景 + 高阴影
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#FFE0B2")); // 深橙色
-            holder.cardView.setCardElevation(16f);
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#FFB74D")); // 亮橙色
+            holder.cardView.setCardElevation(20f);
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
         }
 
-        // ★ 云朵标记（半透明蓝色背景，白色文字，圆角）
+        // ★ 云朵标记（半透明蓝色圆角）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -90,7 +86,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记（半透明绿色背景，白色文字，圆角）
+        // ★ 手机标记（半透明绿色圆角）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -146,6 +142,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
+        // 复选框点击同样触发
         holder.cbSelect.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
