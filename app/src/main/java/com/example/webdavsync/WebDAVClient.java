@@ -28,17 +28,13 @@ public class WebDAVClient {
                 .build();
     }
 
+    // ✅ getServerUrl 方法放在类内部
     public String getServerUrl() {
         return serverUrl;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
+    public String getUsername() { return username; }
+    public String getPassword() { return password; }
 
     private Request.Builder authRequest() {
         return new Request.Builder()
@@ -65,12 +61,9 @@ public class WebDAVClient {
         List<String> entries = new ArrayList<>();
         try {
             String cleanPath = (path == null) ? "" : path;
-            if (cleanPath.startsWith("/")) {
-                cleanPath = cleanPath.substring(1);
-            }
-            if (cleanPath.endsWith("/") && cleanPath.length() > 1) {
+            if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
+            if (cleanPath.endsWith("/") && cleanPath.length() > 1)
                 cleanPath = cleanPath.substring(0, cleanPath.length() - 1);
-            }
             String url = serverUrl + (cleanPath.isEmpty() ? "" : "/" + cleanPath);
 
             Request request = authRequest()
@@ -90,14 +83,10 @@ public class WebDAVClient {
                 boolean found = false;
                 while (matcher.find()) {
                     String href = matcher.group(1);
-                    if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) {
-                        continue;
-                    }
+                    if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
                     String relative = href.replace(serverUrl + "/", "");
                     if (!relative.isEmpty()) {
-                        if (href.endsWith("/") && !relative.endsWith("/")) {
-                            relative += "/";
-                        }
+                        if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
                         entries.add(relative);
                         found = true;
                     }
@@ -107,25 +96,20 @@ public class WebDAVClient {
                     Matcher matcher2 = pattern2.matcher(body);
                     while (matcher2.find()) {
                         String href = matcher2.group(1);
-                        if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) {
-                            continue;
-                        }
+                        if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
                         String relative = href.replace(serverUrl + "/", "");
                         if (!relative.isEmpty()) {
-                            if (href.endsWith("/") && !relative.endsWith("/")) {
-                                relative += "/";
-                            }
+                            if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
                             entries.add(relative);
                             found = true;
                         }
                     }
                 }
                 if (!found) {
-                    if (body.contains("empty") || body.contains("Empty")) {
+                    if (body.contains("empty") || body.contains("Empty"))
                         entries.add("(空目录)");
-                    } else {
+                    else
                         entries.add("警告: 无法解析");
-                    }
                 }
             }
         } catch (IOException e) {
@@ -163,9 +147,7 @@ public class WebDAVClient {
                 FileOutputStream fos = new FileOutputStream(destFile);
                 byte[] buffer = new byte[8192];
                 int len;
-                while ((len = inputStream.read(buffer)) != -1) {
-                    fos.write(buffer, 0, len);
-                }
+                while ((len = inputStream.read(buffer)) != -1) fos.write(buffer, 0, len);
                 fos.close();
                 inputStream.close();
                 return true;
