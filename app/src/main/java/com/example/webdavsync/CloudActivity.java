@@ -65,7 +65,6 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
-        // ★ 点击事件：进入文件夹或更新选中计数
         adapter.setOnItemClickListener((item, position) -> {
             if (item.name.endsWith("/")) {
                 // 进入子目录
@@ -73,21 +72,21 @@ public class CloudActivity extends AppCompatActivity {
                         : currentPath + "/" + item.name.substring(0, item.name.length() - 1);
                 loadDirectory(newPath);
             } else {
+                // 选中/取消选中
+                item.isSelected = !item.isSelected;
+                adapter.notifyItemChanged(position);
                 updateSelectedCount();
             }
         });
 
-        // ★ 长按事件：弹出删除对话框（需返回 true）
         adapter.setOnItemLongClickListener((item, position) -> {
             if (!item.name.endsWith("/")) {
                 showDeleteDialog(item, position);
             }
-            return true; // 必须返回 true，表示事件已处理
         });
 
         loadDirectory("");
 
-        // ★ 点击路径返回根目录
         tvCloudPath.setOnClickListener(v -> {
             if (!currentPath.isEmpty()) {
                 loadDirectory("");
