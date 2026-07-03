@@ -82,19 +82,17 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
 
         // 加载缩略图
         if (isLocal && item.file != null && item.file.exists()) {
-            // 本地：使用 Glide 加载缩略图
+            // 本地文件：用 Glide
             Glide.with(context)
                     .load(item.file)
                     .apply(new RequestOptions()
                             .centerCrop()
-                            .override(200, 200)
+                            .override(300, 300)
                             .placeholder(android.R.drawable.ic_menu_gallery)
                             .error(android.R.drawable.ic_menu_gallery))
                     .into(holder.ivThumbnail);
-        } else if (!isLocal) {
-            // 云端：直接显示默认图标，不进行网络加载，避免闪退
-            holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         } else {
+            // 云端文件或本地无文件：只显示默认图标
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
@@ -147,7 +145,6 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
         public String displayName;
         public File file;
         public String remotePath;
-        public String remoteUrl;
         public boolean isSelected;
         public boolean isOnCloud;
         public boolean isVideo;
