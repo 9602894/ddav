@@ -49,10 +49,9 @@ public class CloudActivity extends AppCompatActivity {
         }
 
         // 更新 Glide 的 OkHttpClient 凭证
-        WebDAVClient.updateOkHttpClient(
-                client.getUsername() != null ? client.getUsername() : "",
-                client.getPassword() != null ? client.getPassword() : ""
-        );
+        String user = client.getUsername();
+        String pass = client.getPassword();
+        WebDAVClient.updateOkHttpClient(user != null ? user : "", pass != null ? pass : "");
 
         rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new PhotoAdapter(this);
