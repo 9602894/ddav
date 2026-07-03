@@ -12,20 +12,34 @@
         android:theme="@style/Theme.PhoSync"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true">
-        <!-- 移除 android:icon 属性，使用系统默认图标 -->
+
+        <!-- 声明 Glide 模块，用于添加认证 -->
+        <meta-data
+            android:name="com.bumptech.glide.integration.okhttp.OkHttpGlideModule"
+            android:value="GlideModule" />
+
+        <!-- 替换为我们的自定义模块 -->
+        <meta-data
+            android:name="com.example.webdavsync.GlideConfig"
+            android:value="GlideModule" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustPan">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity android:name=".CloudActivity" />
-        <activity android:name=".SettingsActivity" />
+        <activity
+            android:name=".CloudActivity"
+            android:windowSoftInputMode="adjustPan" />
+
+        <activity
+            android:name=".SettingsActivity"
+            android:windowSoftInputMode="adjustPan" />
 
     </application>
 
