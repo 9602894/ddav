@@ -17,7 +17,8 @@ public class WebDAVClient {
     private final String password;
 
     public WebDAVClient(String serverUrl, String username, String password) {
-        this.serverUrl = serverUrl;
+        // 确保 serverUrl 不以 / 结尾
+        this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length()-1) : serverUrl;
         this.username = username;
         this.password = password;
         this.client = new OkHttpClient.Builder()
@@ -31,11 +32,10 @@ public class WebDAVClient {
                 .header("Authorization", Credentials.basic(username, password));
     }
 
-    // 测试连接
     public boolean testConnection() {
         try {
             Request request = authRequest()
-                    .url(serverUrl)
+                    .url(serverUrl + "/")
                     .method("PROPFIND", null)
                     .header("Depth", "1")
                     .build();
@@ -48,42 +48,62 @@ public class WebDAVClient {
         }
     }
 
-    // 获取远程文件列表（只返回文件名）
-    public List<String> listFiles() {
-        List<String> fileNames = new ArrayList<>();
+    // 列出指定路径下的文件和目录（返回相对路径名）
+    public List<String> listDirectory(String path) {
+        List<String> entries = new ArrayList<>();
         try {
+            String url = serverUrl + (path.startsWith("/") ? "" : "/") + path;
             Request request = authRequest()
-                    .url(serverUrl)
+                    .url(url)
                     .method("PROPFIND", null)
                     .header("Depth", "1")
                     .build();
             try (Response response = client.newCall(request).execute()) {
-                if (!response.isSuccessful()) return fileNames;
+                if (!response.isSuccessful()) return entries;
                 String body = response.body().string();
-                // 解析 href 标签，提取文件名
-                Pattern pattern = Pattern.compile("<href>.*?/([^/]+)</href>");
+                // 提取 href 标签内容
+                Pattern pattern = Pattern.compile("<href>([^<]+)</href>");
                 Matcher matcher = pattern.matcher(body);
+                String basePath = serverUrl + (path.endsWith("/") ? path : path + "/");
                 while (matcher.find()) {
-                    String name = matcher.group(1);
-                    if (!name.isEmpty() && !name.equals(serverUrl.substring(serverUrl.lastIndexOf('/') + 1))) {
-                        fileNames.add(name);
+                    String href = matcher.group(1);
+                    if (href.equals(basePath) || href.equals(serverUrl + "/") || href.equals(serverUrl)) continue;
+                    // 提取相对路径
+                    String relative = href.replace(serverUrl + "/", "");
+                    if (!relative.isEmpty()) {
+                        entries.add(relative);
                     }
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return fileNames;
+        return entries;
     }
 
-    // 上传文件
-    public boolean uploadFile(File localFile) {
+    public boolean fileExists(String remotePath) {
         try {
-            String remotePath = serverUrl + "/" + localFile.getName();
+            String url = serverUrl + (remotePath.startsWith("/") ? "" : "/") + remotePath;
+            Request request = authRequest()
+                    .url(url)
+                    .head()
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    public boolean uploadFile(String remoteDir, File localFile) {
+        try {
+            String remotePath = remoteDir.endsWith("/") ? remoteDir + localFile.getName() : remoteDir + "/" + localFile.getName();
+            String url = serverUrl + "/" + remotePath.replace("//", "/");
             MediaType mediaType = MediaType.parse("application/octet-stream");
             RequestBody body = RequestBody.create(mediaType, localFile);
             Request request = authRequest()
-                    .url(remotePath)
+                    .url(url)
                     .put(body)
                     .build();
             try (Response response = client.newCall(request).execute()) {
@@ -91,6 +111,21 @@ public class WebDAVClient {
             }
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
+        }
+    }
+
+    public boolean createDirectory(String remoteDir) {
+        try {
+            String url = serverUrl + "/" + remoteDir.replace("//", "/") + "/";
+            Request request = authRequest()
+                    .url(url)
+                    .method("MKCOL", null)
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
+        } catch (IOException e) {
             return false;
         }
     }
