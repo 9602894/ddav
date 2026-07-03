@@ -39,7 +39,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="10dp"
+        android:padding="8dp"
         android:background="#ffffff"
         android:elevation="2dp">
 
@@ -80,8 +80,8 @@
         android:orientation="horizontal"
         android:background="#ffffff"
         android:elevation="4dp"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
         android:gravity="center_vertical">
 
         <TextView
@@ -96,30 +96,38 @@
         <Button
             android:id="@+id/btn_cloud_up"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="36dp"
             android:text="返回"
             android:backgroundTint="#FF9800"
             android:textColor="#ffffff"
-            android:layout_marginEnd="8dp" />
+            android:textSize="12sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
+
+        <Button
+            android:id="@+id/btn_delete_cloud"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="删除选中"
+            android:backgroundTint="#F44336"
+            android:textColor="#ffffff"
+            android:textSize="12sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:layout_marginStart="8dp" />
 
         <Button
             android:id="@+id/btn_download"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="下载选中"
+            android:layout_height="36dp"
+            android:text="下载"
             android:backgroundTint="#2196F3"
-            android:textColor="#ffffff" />
-        <Button
-            android:id="@+id/btn_delete_cloud"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="删除选中"
-            android:backgroundTint="#F44336"
             android:textColor="#ffffff"
-            android:textSize="13sp"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:layout_marginStart="8dp" />  
+            android:textSize="12sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:layout_marginStart="8dp" />
+
     </LinearLayout>
 
 </LinearLayout>
