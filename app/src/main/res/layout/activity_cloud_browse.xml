@@ -3,38 +3,48 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="8dp">
 
     <TextView
         android:id="@+id/tv_cloud_path"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="云端: /"
-        android:textSize="16sp" />
+        android:textSize="16sp"
+        android:padding="4dp" />
 
-    <ListView
-        android:id="@+id/lv_cloud_files"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_cloud_files"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginTop="8dp" />
+        android:layout_weight="1" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:layout_marginTop="8dp">
+
         <Button
             android:id="@+id/btn_cloud_up"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="返回上级" />
+
         <Button
             android:id="@+id/btn_cloud_refresh"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:text="刷新" />
+
+        <Button
+            android:id="@+id/btn_cloud_download"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="下载选中" />
     </LinearLayout>
 
     <TextView
@@ -43,6 +53,5 @@
         android:layout_height="wrap_content"
         android:text=""
         android:gravity="center"
-        android:textSize="14sp"
-        android:layout_marginTop="8dp" />
+        android:padding="4dp" />
 </LinearLayout>
