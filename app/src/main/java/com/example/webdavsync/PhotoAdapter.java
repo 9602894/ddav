@@ -44,6 +44,12 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
     public void setItems(List<PhotoItem> list) {
         this.items = list;
+        // ★ 强制设置第一个项为选中并标记为云端，用于测试
+        if (this.items != null && !this.items.isEmpty()) {
+            PhotoItem first = this.items.get(0);
+            first.isSelected = true;
+            first.isOnCloud = true;
+        }
         notifyDataSetChanged();
     }
 
@@ -71,7 +77,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ 彩色边框
+        // 彩色边框
         if (item.isSelected) {
             holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7"));
             holder.cardView.setCardElevation(8f);
@@ -80,7 +86,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.cardView.setCardElevation(2f);
         }
 
-        // ★ 云朵标记（透明背景彩色）
+        // 云朵标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -90,7 +96,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记（透明背景彩色）
+        // 手机标记
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -110,7 +116,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
-        // 缩略图加载
+        // 缩略图
         if (isCloudView && item.remoteUrl != null) {
             Glide.with(context)
                     .load(item.remoteUrl)
@@ -141,7 +147,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // 点击切换选中
+        // 点击选中
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
