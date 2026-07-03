@@ -65,14 +65,28 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
-        adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
+        adapter.setOnItemClickListener((item, position) -> {
+            // ★ 点击进入文件夹
+            if (item.name.endsWith("/")) {
+                // 进入子目录
+                String newPath = currentPath.isEmpty() ? item.name.substring(0, item.name.length() - 1)
+                        : currentPath + "/" + item.name.substring(0, item.name.length() - 1);
+                loadDirectory(newPath);
+            } else {
+                updateSelectedCount();
+            }
+        });
+
         adapter.setOnItemLongClickListener((item, position) -> {
-            showDeleteDialog(item, position);
+            if (!item.name.endsWith("/")) {
+                showDeleteDialog(item, position);
+            }
+            return true;
         });
 
         loadDirectory("");
 
-        // 点击路径返回根目录
+        // ★ 点击路径返回根目录
         tvCloudPath.setOnClickListener(v -> {
             if (!currentPath.isEmpty()) {
                 loadDirectory("");
@@ -128,29 +142,22 @@ public class CloudActivity extends AppCompatActivity {
 
                     if (!hasError) {
                         for (String item : items) {
-                            if (item.endsWith("/")) {
-                                // 显示目录（可点击进入）
-                                PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
-                                fi.name = item;
-                                fi.displayName = item;
-                                fi.isOnCloud = true;
-                                fi.isOnLocal = false;
-                                fi.remoteUrl = null;
-                                fi.isVideo = false;
-                                list.add(fi);
-                            } else {
-                                PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
-                                fi.name = item;
-                                fi.displayName = item;
-                                fi.isOnCloud = true;
-                                fi.isOnLocal = localFileNames.contains(item);
+                            PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
+                            fi.name = item;
+                            fi.displayName = item;
+                            fi.isOnCloud = true;
+                            fi.isOnLocal = !item.endsWith("/") && localFileNames.contains(item);
+                            if (!item.endsWith("/")) {
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
                                 fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                                 String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
                                 fi.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
-                                fi.dateModified = 0;
-                                list.add(fi);
+                            } else {
+                                fi.remoteUrl = null;
+                                fi.isVideo = false;
                             }
+                            fi.dateModified = 0;
+                            list.add(fi);
                         }
                         Collections.sort(list, (a, b) -> a.name.compareToIgnoreCase(b.name));
                         tvCloudCount.setText(list.size() + " 个项目");
@@ -213,12 +220,8 @@ public class CloudActivity extends AppCompatActivity {
             mainHandler.post(() -> {
                 btnDownload.setEnabled(true);
                 tvCloudCount.setText("下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
-                Toast.makeText(CloudActivity.this,
-                        "下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
-                        Toast.LENGTH_LONG).show();
-                for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-                    item.isSelected = false;
-                }
+                Toast.makeText(CloudActivity.this, "下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail, Toast.LENGTH_LONG).show();
+                for (PhotoAdapter.PhotoItem item : adapter.getItems()) item.isSelected = false;
                 adapter.notifyDataSetChanged();
                 updateSelectedCount();
                 collectLocalFiles();
@@ -255,9 +258,7 @@ public class CloudActivity extends AppCompatActivity {
                         final int finalFail = fail;
                         mainHandler.post(() -> {
                             tvCloudCount.setText("删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
-                            Toast.makeText(CloudActivity.this,
-                                    "删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
-                                    Toast.LENGTH_LONG).show();
+                            Toast.makeText(CloudActivity.this, "删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail, Toast.LENGTH_LONG).show();
                             loadDirectory(currentPath);
                         });
                     }).start();
