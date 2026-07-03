@@ -65,11 +65,12 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
-        // ★ 点击切换选中 + 进入目录
         adapter.setOnItemClickListener((item, position) -> {
-            if (item.name.endsWith("/")) {
+            // ★ 判断是否为目录：如果名称以 '/' 结尾，或者没有包含 '.'（视为目录）
+            boolean isDir = item.name.endsWith("/") || !item.name.contains(".");
+            if (isDir) {
                 // 进入子目录（移除末尾的 /）
-                String subPath = item.name.substring(0, item.name.length() - 1);
+                String subPath = item.name.endsWith("/") ? item.name.substring(0, item.name.length() - 1) : item.name;
                 String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
                 loadDirectory(newPath);
             } else {
@@ -78,11 +79,6 @@ public class CloudActivity extends AppCompatActivity {
                 adapter.notifyItemChanged(position);
                 updateSelectedCount();
             }
-        });
-
-        // 长按删除（可选，但我们使用按钮）
-        adapter.setOnItemLongClickListener((item, position) -> {
-            // 不处理
         });
 
         loadDirectory("");
@@ -147,8 +143,10 @@ public class CloudActivity extends AppCompatActivity {
                             fi.name = item;
                             fi.displayName = item;
                             fi.isOnCloud = true;
-                            fi.isOnLocal = !item.endsWith("/") && localFileNames.contains(item);
-                            if (!item.endsWith("/")) {
+                            // 判断是否为目录（同点击逻辑）
+                            boolean isDir = item.endsWith("/") || !item.contains(".");
+                            fi.isOnLocal = !isDir && localFileNames.contains(item);
+                            if (!isDir) {
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
                                 fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                                 String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
@@ -184,7 +182,7 @@ public class CloudActivity extends AppCompatActivity {
     private void downloadSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/")) {
+            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
                 selected.add(item);
             }
         }
@@ -234,7 +232,7 @@ public class CloudActivity extends AppCompatActivity {
     private void deleteSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/")) {
+            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
                 selected.add(item);
             }
         }
