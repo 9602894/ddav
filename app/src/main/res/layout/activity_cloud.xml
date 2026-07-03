@@ -50,7 +50,9 @@
             android:textSize="13sp"
             android:textColor="#333333"
             android:singleLine="true"
-            android:ellipsize="start" />
+            android:ellipsize="start"
+            android:clickable="true"
+            android:focusable="true" />
 
         <TextView
             android:id="@+id/tv_cloud_count"
