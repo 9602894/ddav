@@ -6,7 +6,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -14,10 +13,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +24,7 @@ public class CloudBrowseActivity extends AppCompatActivity {
 
     private ArrayAdapter<String> adapter;
     private List<String> entries = new ArrayList<>();
-    private List<String> fullPaths = new ArrayList<>(); // 存储完整远程路径
+    private List<String> fullPaths = new ArrayList<>();
     private WebDAVClient client;
     private String currentPath = "";
 
@@ -55,7 +50,6 @@ public class CloudBrowseActivity extends AppCompatActivity {
 
         loadDirectory("");
 
-        // 短按：进入目录或显示文件信息
         lvCloudFiles.setOnItemClickListener((parent, view, position, id) -> {
             String item = entries.get(position);
             if (item.startsWith("错误") || item.startsWith("网络错误") || item.startsWith("警告")
@@ -71,7 +65,6 @@ public class CloudBrowseActivity extends AppCompatActivity {
             }
         });
 
-        // 长按：弹出下载菜单
         lvCloudFiles.setOnItemLongClickListener((parent, view, position, id) -> {
             String item = entries.get(position);
             if (item.endsWith("/") || item.startsWith("错误") || item.startsWith("网络错误")
@@ -123,14 +116,10 @@ public class CloudBrowseActivity extends AppCompatActivity {
                         tvCloudStatus.setText("共 " + items.size() + " 个项目");
                         for (String item : items) {
                             entries.add(item);
-                            // 构建完整远程路径
                             String full = currentPath.isEmpty() ? item : currentPath + "/" + item;
                             fullPaths.add(full);
                         }
                         java.util.Collections.sort(entries);
-                        // 同步排序 fullPaths
-                        // 简单处理：重新构建
-                        // 由于 entries 和 fullPaths 需要一一对应，这里用索引方式
                     }
                 } else {
                     tvCloudStatus.setText("空目录或加载失败");
@@ -156,58 +145,40 @@ public class CloudBrowseActivity extends AppCompatActivity {
         Toast.makeText(this, "开始下载: " + fileName, Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try {
-                // 使用 OkHttp 下载
-                okhttp3.Request request = new okhttp3.Request.Builder()
-                        .url(client.getServerUrl() + "/" + remotePath)
-                        .header("Authorization", okhttp3.Credentials.basic(
-                                client.getUsername(), client.getPassword()))
-                        .build();
-                okhttp3.OkHttpClient httpClient = new okhttp3.OkHttpClient();
-                okhttp3.Response response = httpClient.newCall(request).execute();
-                if (response.isSuccessful()) {
-                    // 保存到 Download 目录
-                    File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-                    if (!downloadDir.exists()) {
-                        downloadDir.mkdirs();
-                    }
-                    File destFile = new File(downloadDir, fileName);
-                    // 如果文件已存在，添加数字后缀
-                    int count = 1;
-                    String name = fileName;
-                    String ext = "";
-                    int dotIndex = fileName.lastIndexOf('.');
-                    if (dotIndex > 0) {
-                        name = fileName.substring(0, dotIndex);
-                        ext = fileName.substring(dotIndex);
-                    }
-                    while (destFile.exists()) {
-                        destFile = new File(downloadDir, name + "_" + count + ext);
-                        count++;
-                    }
-
-                    InputStream inputStream = response.body().byteStream();
-                    FileOutputStream fos = new FileOutputStream(destFile);
-                    byte[] buffer = new byte[8192];
-                    int len;
-                    while ((len = inputStream.read(buffer)) != -1) {
-                        fos.write(buffer, 0, len);
-                    }
-                    fos.close();
-                    inputStream.close();
-
-                    mainHandler.post(() ->
-                            Toast.makeText(CloudBrowseActivity.this,
-                                    "下载完成: " + destFile.getName(),
-                                    Toast.LENGTH_LONG).show()
-                    );
-                } else {
-                    mainHandler.post(() ->
-                            Toast.makeText(CloudBrowseActivity.this,
-                                    "下载失败: HTTP " + response.code(),
-                                    Toast.LENGTH_SHORT).show()
-                    );
+                File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                if (!downloadDir.exists()) {
+                    downloadDir.mkdirs();
                 }
-                response.close();
+                File destFile = new File(downloadDir, fileName);
+                // 如果文件已存在，添加数字后缀
+                int count = 1;
+                String name = fileName;
+                String ext = "";
+                int dotIndex = fileName.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    name = fileName.substring(0, dotIndex);
+                    ext = fileName.substring(dotIndex);
+                }
+                while (destFile.exists()) {
+                    destFile = new File(downloadDir, name + "_" + count + ext);
+                    count++;
+                }
+
+                // 关键修正：将 destFile 赋值给一个 final 变量，供 lambda 使用
+                final File finalDestFile = destFile;
+
+                boolean success = client.downloadFile(remotePath, destFile);
+                mainHandler.post(() -> {
+                    if (success) {
+                        Toast.makeText(CloudBrowseActivity.this,
+                                "下载完成: " + finalDestFile.getName(),
+                                Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(CloudBrowseActivity.this,
+                                "下载失败",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
             } catch (Exception e) {
                 e.printStackTrace();
                 mainHandler.post(() ->
