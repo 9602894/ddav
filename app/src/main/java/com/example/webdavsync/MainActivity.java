@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
 
-        // 请求权限
+        // 请求权限，如果失败则退出
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             String[] perms = {
                     Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -61,12 +61,17 @@ public class MainActivity extends AppCompatActivity {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
-                return;
+                return; // 等待回调
             }
         }
 
+        // 权限已授予，正常初始化
+        initAfterPermissions();
+    }
+
+    private void initAfterPermissions() {
         setupRecyclerView();
-        loadSettings();
+        loadCurrentConnection();
         loadLocalPhotos();
         setupListeners();
     }
@@ -90,29 +95,36 @@ public class MainActivity extends AppCompatActivity {
         adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
     }
 
-    private void loadSettings() {
-        String server = prefs.getString("server_url", "");
-        String username = prefs.getString("username", "");
-        String password = prefs.getString("password", "");
-
-        if (!server.isEmpty()) {
-            webdavClient = new WebDAVClient(server, username, password);
-            tvConnectionStatus.setText("🔗 " + server);
-            // 后台测试连接
-            new Thread(() -> {
-                boolean ok = webdavClient.testConnection();
-                mainHandler.post(() -> {
-                    if (ok) {
-                        tvConnectionStatus.setText("✅ 已连接: " + server);
-                        loadRemoteFileList();
-                    } else {
-                        tvConnectionStatus.setText("⚠️ 连接失败: " + server);
-                    }
-                });
-            }).start();
-        } else {
-            tvConnectionStatus.setText("⚪ 未配置连接");
+    private void loadCurrentConnection() {
+        // 从设置中获取当前连接的配置名称
+        String currentConfig = prefs.getString("current_config", "");
+        if (!currentConfig.isEmpty()) {
+            // 从配置存储中加载详细信息
+            SharedPreferences configPrefs = getSharedPreferences("webdav_configs", MODE_PRIVATE);
+            String server = configPrefs.getString("config_" + currentConfig + "_server", "");
+            String user = configPrefs.getString("config_" + currentConfig + "_username", "");
+            String pass = configPrefs.getString("config_" + currentConfig + "_password", "");
+            if (!server.isEmpty()) {
+                webdavClient = new WebDAVClient(server, user, pass);
+                tvConnectionStatus.setText("🔗 " + server);
+                new Thread(() -> {
+                    boolean ok = webdavClient.testConnection();
+                    mainHandler.post(() -> {
+                        if (ok) {
+                            tvConnectionStatus.setText("✅ 已连接: " + server);
+                            loadRemoteFileList();
+                        } else {
+                            tvConnectionStatus.setText("⚠️ 连接失败: " + server);
+                            webdavClient = null;
+                        }
+                    });
+                }).start();
+                return;
+            }
         }
+        // 没有有效配置
+        tvConnectionStatus.setText("⚪ 未配置连接");
+        webdavClient = null;
     }
 
     private void loadRemoteFileList() {
@@ -194,18 +206,27 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupListeners() {
         ivSettings.setOnClickListener(v -> {
-            startActivity(new Intent(this, SettingsActivity.class));
+            startActivityForResult(new Intent(this, SettingsActivity.class), 1);
         });
 
         btnSync.setOnClickListener(v -> syncToCloud());
 
         btnCloud.setOnClickListener(v -> {
             if (webdavClient == null) {
-                Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "请先配置并切换 WebDAV 连接", Toast.LENGTH_SHORT).show();
                 return;
             }
             startActivity(new Intent(this, CloudActivity.class));
         });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 1 && resultCode == RESULT_OK) {
+            // 设置返回，重新加载连接
+            loadCurrentConnection();
+        }
     }
 
     private void syncToCloud() {
@@ -264,9 +285,12 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_PERMISSIONS) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                loadLocalPhotos();
+                // 权限授予，继续初始化
+                initAfterPermissions();
             } else {
+                // 权限被拒绝，给出提示并退出
                 Toast.makeText(this, "需要存储权限才能访问相册", Toast.LENGTH_LONG).show();
+                finish();
             }
         }
     }
@@ -274,6 +298,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        loadSettings();
+        // 刷新连接状态
+        if (webdavClient == null) {
+            loadCurrentConnection();
+        }
     }
 }
