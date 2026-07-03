@@ -98,12 +98,14 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void collectLocalFiles() {
+        localFileNames.clear();
         File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         if (downloadDir != null && downloadDir.exists()) {
             for (File f : downloadDir.listFiles()) {
                 if (f.isFile()) localFileNames.add(f.getName());
             }
         }
+        // 也可以扫描相册，但为简化，仅扫描 Download
     }
 
     private void loadDirectory(String path) {
