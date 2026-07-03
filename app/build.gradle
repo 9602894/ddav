@@ -13,12 +13,11 @@ android {
         versionCode 1
         versionName '1.0'
 
-        // 启用 buildConfig 字段
         buildConfigField "String", "TIMESTAMP", "\"" + System.currentTimeMillis() + "\""
     }
 
     buildFeatures {
-        buildConfig true   // 必须启用，否则 buildConfigField 不生效
+        buildConfig true
     }
 
     buildTypes {
