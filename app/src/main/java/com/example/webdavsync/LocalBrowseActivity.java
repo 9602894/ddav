@@ -5,12 +5,12 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,17 +19,14 @@ import java.util.Set;
 
 public class LocalBrowseActivity extends AppCompatActivity {
 
-    private ListView lvLocalFiles;
+    private RecyclerView rvLocal;
     private TextView tvLocalPath, tvLocalStatus;
-    private Button btnLocalUp, btnUploadSelected;
+    private Button btnLocalUp, btnLocalUpload;
 
-    private ArrayAdapter<String> adapter;
-    private List<String> entries = new ArrayList<>();
-    private List<String> filePaths = new ArrayList<>(); // 完整路径
-    private String currentPath;
+    private FileAdapter adapter;
     private WebDAVClient client;
+    private String currentPath;
     private Set<String> remoteFileNames = new HashSet<>();
-
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -37,48 +34,33 @@ public class LocalBrowseActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_local_browse);
 
-        lvLocalFiles = findViewById(R.id.lv_local_files);
+        rvLocal = findViewById(R.id.rv_local_files);
         tvLocalPath = findViewById(R.id.tv_local_path);
         tvLocalStatus = findViewById(R.id.tv_local_status);
         btnLocalUp = findViewById(R.id.btn_local_up);
-        btnUploadSelected = findViewById(R.id.btn_upload_selected);
+        btnLocalUpload = findViewById(R.id.btn_local_upload);
 
         client = WebDAVClientHolder.getClient();
         if (client == null) {
-            Toast.makeText(this, "未连接到服务器，请先连接", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "未连接服务器", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
 
-        // 默认从 Download 目录开始
+        rvLocal.setLayoutManager(new GridLayoutManager(this, 2));
+        adapter = new FileAdapter(this, true);
+        rvLocal.setAdapter(adapter);
+
         currentPath = Environment.getExternalStorageDirectory() + "/Download";
         loadLocalDirectory(currentPath);
 
-        // 点击条目：切换选中状态（多选）
-        lvLocalFiles.setOnItemClickListener((parent, view, position, id) -> {
-            String item = entries.get(position);
-            if (item.equals("..")) {
-                File parentFile = new File(currentPath).getParentFile();
-                if (parentFile != null) {
-                    loadLocalDirectory(parentFile.getAbsolutePath());
-                }
-                return;
-            }
-            // 切换选中状态
-            boolean isChecked = lvLocalFiles.isItemChecked(position);
-            lvLocalFiles.setItemChecked(position, !isChecked);
-        });
-
         btnLocalUp.setOnClickListener(v -> {
-            File parentFile = new File(currentPath).getParentFile();
-            if (parentFile != null) {
-                loadLocalDirectory(parentFile.getAbsolutePath());
-            } else {
-                Toast.makeText(this, "已在根目录", Toast.LENGTH_SHORT).show();
-            }
+            File parent = new File(currentPath).getParentFile();
+            if (parent != null) loadLocalDirectory(parent.getAbsolutePath());
+            else Toast.makeText(this, "已在根目录", Toast.LENGTH_SHORT).show();
         });
 
-        btnUploadSelected.setOnClickListener(v -> uploadSelectedFiles());
+        btnLocalUpload.setOnClickListener(v -> uploadSelected());
     }
 
     private void loadLocalDirectory(String path) {
@@ -87,124 +69,69 @@ public class LocalBrowseActivity extends AppCompatActivity {
         tvLocalStatus.setText("加载中...");
 
         new Thread(() -> {
+            // 获取远程文件名列表（用于标记是否已上传）
             List<String> remoteItems = client.listDirectory("");
-            Set<String> remoteNames = new HashSet<>();
+            remoteFileNames.clear();
             for (String item : remoteItems) {
                 if (!item.endsWith("/")) {
-                    remoteNames.add(item);
+                    remoteFileNames.add(item);
                 }
             }
-            remoteFileNames = remoteNames;
 
-            mainHandler.post(() -> {
-                File dir = new File(currentPath);
-                if (!dir.exists() || !dir.isDirectory()) {
-                    tvLocalStatus.setText("目录不存在");
-                    entries.clear();
-                    filePaths.clear();
-                    adapter = new ArrayAdapter<>(LocalBrowseActivity.this,
-                            android.R.layout.simple_list_item_multiple_choice, entries);
-                    lvLocalFiles.setAdapter(adapter);
-                    lvLocalFiles.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
-                    return;
-                }
-
+            File dir = new File(currentPath);
+            List<FileAdapter.FileItem> list = new ArrayList<>();
+            if (dir.exists() && dir.isDirectory()) {
                 File[] files = dir.listFiles();
-                entries.clear();
-                filePaths.clear();
-
                 if (files != null) {
-                    // 父目录
-                    if (!currentPath.equals("/") && dir.getParentFile() != null) {
-                        entries.add("..");
-                        filePaths.add(dir.getParentFile().getAbsolutePath());
-                    }
-
-                    List<File> dirs = new ArrayList<>();
-                    List<File> fileList = new ArrayList<>();
+                    // 添加父目录项？我们可以用“..”但网格不直观，我们用返回上级按钮。
+                    // 只显示文件和目录，目录以 / 结尾
                     for (File f : files) {
+                        FileAdapter.FileItem fi = new FileAdapter.FileItem(f.getName());
+                        fi.file = f;
                         if (f.isDirectory()) {
-                            dirs.add(f);
+                            fi.name = f.getName() + "/";
                         } else {
-                            fileList.add(f);
+                            // 检查是否已上传
+                            if (remoteFileNames.contains(f.getName())) {
+                                fi.name = f.getName() + " ☁️";
+                            }
                         }
-                    }
-                    java.util.Collections.sort(dirs, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
-                    java.util.Collections.sort(fileList, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
-
-                    for (File d : dirs) {
-                        entries.add(d.getName() + "/");
-                        filePaths.add(d.getAbsolutePath());
-                    }
-                    for (File f : fileList) {
-                        String name = f.getName();
-                        if (remoteFileNames.contains(name)) {
-                            entries.add(name + " ☁️");
-                        } else {
-                            entries.add(name);
-                        }
-                        filePaths.add(f.getAbsolutePath());
+                        list.add(fi);
                     }
                 }
-
-                tvLocalStatus.setText("共 " + entries.size() + " 个项目 (点击选中，再次点击取消)");
-                adapter = new ArrayAdapter<>(LocalBrowseActivity.this,
-                        android.R.layout.simple_list_item_multiple_choice, entries);
-                lvLocalFiles.setAdapter(adapter);
-                lvLocalFiles.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
-                // 清除所有选中状态
-                for (int i = 0; i < lvLocalFiles.getCount(); i++) {
-                    lvLocalFiles.setItemChecked(i, false);
-                }
+            }
+            mainHandler.post(() -> {
+                tvLocalStatus.setText("共 " + list.size() + " 项");
+                adapter.setItems(list);
             });
         }).start();
     }
 
-    private void uploadSelectedFiles() {
-        List<Integer> selectedPositions = new ArrayList<>();
-        for (int i = 0; i < lvLocalFiles.getCount(); i++) {
-            if (lvLocalFiles.isItemChecked(i)) {
-                selectedPositions.add(i);
+    private void uploadSelected() {
+        List<FileAdapter.FileItem> selected = new ArrayList<>();
+        for (FileAdapter.FileItem fi : adapter.getItems()) {
+            if (fi.isSelected && fi.file != null && fi.file.isFile()) {
+                selected.add(fi);
             }
         }
-        if (selectedPositions.isEmpty()) {
-            Toast.makeText(this, "请先点击选中文件", Toast.LENGTH_SHORT).show();
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "请先选中文件", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        List<File> toUpload = new ArrayList<>();
-        for (int pos : selectedPositions) {
-            String path = filePaths.get(pos);
-            if (path != null) {
-                File f = new File(path);
-                if (f.exists() && f.isFile()) {
-                    toUpload.add(f);
-                }
-            }
-        }
-        if (toUpload.isEmpty()) {
-            Toast.makeText(this, "选中的项目中没有文件", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        tvLocalStatus.setText("上传中... " + toUpload.size() + " 个文件");
+        Toast.makeText(this, "开始上传 " + selected.size() + " 个文件", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             int success = 0, fail = 0;
-            for (File f : toUpload) {
-                if (client.uploadFile("", f)) {
-                    success++;
-                } else {
-                    fail++;
-                }
+            for (FileAdapter.FileItem fi : selected) {
+                boolean ok = client.uploadFile("", fi.file);
+                if (ok) success++; else fail++;
             }
             final int finalSuccess = success;
             final int finalFail = fail;
             mainHandler.post(() -> {
                 tvLocalStatus.setText("上传完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
-                Toast.makeText(LocalBrowseActivity.this,
-                        "上传完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
-                        Toast.LENGTH_LONG).show();
-                loadLocalDirectory(currentPath);
+                Toast.makeText(LocalBrowseActivity.this, "上传完成", Toast.LENGTH_LONG).show();
+                loadLocalDirectory(currentPath); // 刷新
             });
         }).start();
     }
