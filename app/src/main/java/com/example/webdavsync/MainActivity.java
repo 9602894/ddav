@@ -40,7 +40,6 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSIONS = 100;
-    private static final int REQUEST_MANAGE_STORAGE = 101;
 
     private RecyclerView rvPhotos;
     private TextView tvConnectionStatus, tvPhotoCount, tvSelectedCount;
@@ -60,23 +59,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         writeBuildInfo();
+
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
 
-        // 请求存储权限（包括 Android 10+ 的全文件访问）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             String[] perms = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
                 return;
-            }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, REQUEST_MANAGE_STORAGE);
             }
         }
 
@@ -123,15 +115,14 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
+        // 点击选中（切换选择状态）
         adapter.setOnItemClickListener((item, position) -> {
-            // 点击切换选中状态
             item.isSelected = !item.isSelected;
             adapter.notifyItemChanged(position);
             updateSelectedCount();
         });
-        adapter.setOnItemLongClickListener((item, position) -> {
-            showDeleteLocalDialog(item, position);
-        });
+
+        // ★ 移除长按监听，删除只能通过按钮触发
     }
 
     private void loadCurrentConnection() {
@@ -170,7 +161,6 @@ public class MainActivity extends AppCompatActivity {
                     remoteFileNames.add(f);
                 }
             }
-            android.util.Log.d("WebDAV", "Remote files: " + remoteFileNames);
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
@@ -238,16 +228,17 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(new Intent(this, CloudActivity.class));
         });
+
+        // ★ 删除按钮触发删除
         btnDeleteLocal.setOnClickListener(v -> deleteSelectedLocal());
 
+        // 调试按钮：强制显示云标记
         btnDebug.setOnClickListener(v -> {
             for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                 item.isOnCloud = true;
-                item.isSelected = true; // 调试时同时选中，测试彩色边框
             }
             adapter.notifyDataSetChanged();
-            updateSelectedCount();
-            Toast.makeText(this, "已强制显示云标记和选中状态", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "已强制显示云标记", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -320,6 +311,7 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    // ★ 删除选中的本地文件
     private void deleteSelectedLocal() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
@@ -344,23 +336,6 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(MainActivity.this, "已删除 " + finalSuccess + " 个本地文件", Toast.LENGTH_SHORT).show();
                         loadLocalPhotos();
                     });
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void showDeleteLocalDialog(PhotoAdapter.PhotoItem item, int position) {
-        if (item.file == null || !item.file.exists()) return;
-        new AlertDialog.Builder(this)
-                .setTitle("删除本地文件")
-                .setMessage("确定要删除 \"" + item.name + "\" 吗？")
-                .setPositiveButton("删除", (dialog, which) -> {
-                    if (item.file.delete()) {
-                        Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show();
-                        loadLocalPhotos();
-                    } else {
-                        Toast.makeText(this, "删除失败，请检查权限", Toast.LENGTH_SHORT).show();
-                    }
                 })
                 .setNegativeButton("取消", null)
                 .show();
