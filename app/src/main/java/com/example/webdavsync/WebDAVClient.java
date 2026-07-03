@@ -17,13 +17,18 @@ public class WebDAVClient {
     private final String password;
 
     public WebDAVClient(String serverUrl, String username, String password) {
-        this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length()-1) : serverUrl;
+        // 确保 serverUrl 不以 / 结尾
+        this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
         this.username = username;
         this.password = password;
         this.client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
+    }
+
+    public String getServerUrl() {
+        return serverUrl;
     }
 
     private Request.Builder authRequest() {
@@ -47,36 +52,52 @@ public class WebDAVClient {
         }
     }
 
-    // 列出指定路径下的文件和目录（返回相对路径名）
+    /**
+     * 列出指定路径下的文件和目录
+     * @param path 相对路径，如 "" 或 "photos" 或 "photos/2024"
+     * @return 文件名列表（目录以 / 结尾）
+     */
     public List<String> listDirectory(String path) {
         List<String> entries = new ArrayList<>();
         try {
-            // 规范化路径
-            String cleanPath = path.startsWith("/") ? path.substring(1) : path;
-            cleanPath = cleanPath.endsWith("/") ? cleanPath.substring(0, cleanPath.length()-1) : cleanPath;
+            String cleanPath = path == null ? "" : path;
+            if (cleanPath.startsWith("/")) {
+                cleanPath = cleanPath.substring(1);
+            }
+            if (cleanPath.endsWith("/") && cleanPath.length() > 1) {
+                cleanPath = cleanPath.substring(0, cleanPath.length() - 1);
+            }
             String url = serverUrl + (cleanPath.isEmpty() ? "" : "/" + cleanPath);
+
             Request request = authRequest()
                     .url(url)
                     .method("PROPFIND", null)
                     .header("Depth", "1")
                     .build();
+
             try (Response response = client.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    String msg = "HTTP " + response.code() + ": " + response.message();
-                    entries.add("错误: " + msg);
+                    entries.add("错误: HTTP " + response.code());
                     return entries;
                 }
                 String body = response.body().string();
-                // 提取 href 标签内容
                 Pattern pattern = Pattern.compile("<href>([^<]+)</href>");
                 Matcher matcher = pattern.matcher(body);
-                String basePath = url.endsWith("/") ? url : url + "/";
+                String baseUrl = url.endsWith("/") ? url : url + "/";
+
                 while (matcher.find()) {
                     String href = matcher.group(1);
-                    // 跳过自身和父目录
-                    if (href.equals(basePath) || href.equals(url + "/") || href.equals(url)) continue;
+                    // 跳过自身
+                    if (href.equals(baseUrl) || href.equals(url + "/") || href.equals(url)) {
+                        continue;
+                    }
+                    // 提取相对路径
                     String relative = href.replace(serverUrl + "/", "");
                     if (!relative.isEmpty()) {
+                        // 确保目录以 / 结尾
+                        if (href.endsWith("/") && !relative.endsWith("/")) {
+                            relative = relative + "/";
+                        }
                         entries.add(relative);
                     }
                 }
@@ -105,14 +126,18 @@ public class WebDAVClient {
 
     public boolean uploadFile(String remoteDir, File localFile) {
         try {
-            String remotePath = remoteDir.endsWith("/") ? remoteDir + localFile.getName() : remoteDir + "/" + localFile.getName();
-            String url = serverUrl + "/" + remotePath.replace("//", "/");
+            String remotePath = remoteDir == null || remoteDir.isEmpty() ? localFile.getName()
+                    : remoteDir + "/" + localFile.getName();
+            remotePath = remotePath.replace("//", "/");
+            String url = serverUrl + "/" + remotePath;
+
             MediaType mediaType = MediaType.parse("application/octet-stream");
             RequestBody body = RequestBody.create(mediaType, localFile);
             Request request = authRequest()
                     .url(url)
                     .put(body)
                     .build();
+
             try (Response response = client.newCall(request).execute()) {
                 return response.isSuccessful();
             }
@@ -130,7 +155,7 @@ public class WebDAVClient {
                     .method("MKCOL", null)
                     .build();
             try (Response response = client.newCall(request).execute()) {
-                return response.isSuccessful();
+                return response.isSuccessful() || response.code() == 405; // 405 表示已存在
             }
         } catch (IOException e) {
             return false;
