@@ -37,7 +37,7 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
-            <!-- ★ 云朵标记（半透明背景） -->
+            <!-- 云朵标记 (彩色, 透明背景) -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -45,14 +45,17 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignStart="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-                android:padding="6dp 8dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
                 android:text="☁️"
-                android:textSize="18sp"
-                android:textColor="#FFFFFF"
-                android:background="#801E88E5"
+                android:textSize="24sp"
+                android:textColor="#1E88E5"
+                android:background="@android:color/transparent"
                 android:visibility="gone" />
 
-            <!-- ★ 手机标记（半透明背景） -->
+            <!-- 手机标记 (彩色, 透明背景) -->
             <TextView
                 android:id="@+id/tv_local_badge"
                 android:layout_width="wrap_content"
@@ -60,11 +63,14 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_toEndOf="@+id/tv_cloud_badge"
                 android:layout_margin="6dp"
-                android:padding="6dp 8dp"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
                 android:text="📱"
-                android:textSize="18sp"
-                android:textColor="#FFFFFF"
-                android:background="#8043A047"
+                android:textSize="24sp"
+                android:textColor="#43A047"
+                android:background="@android:color/transparent"
                 android:visibility="gone" />
 
             <TextView
