@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="#f5f5f5">
 
-    <!-- 顶部工具栏 -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -34,7 +33,6 @@
 
     </androidx.appcompat.widget.Toolbar>
 
-    <!-- 路径栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -63,7 +61,6 @@
             android:textColor="#888888" />
     </LinearLayout>
 
-    <!-- 文件网格 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_cloud_files"
         android:layout_width="match_parent"
@@ -73,7 +70,6 @@
         android:clipToPadding="false"
         android:background="#f5f5f5" />
 
-    <!-- 底部操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
@@ -114,7 +110,7 @@
             android:textSize="12sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="4dp" />
 
         <Button
             android:id="@+id/btn_download"
@@ -126,7 +122,7 @@
             android:textSize="12sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="4dp" />
 
     </LinearLayout>
 
