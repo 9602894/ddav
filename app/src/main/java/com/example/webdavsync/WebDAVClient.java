@@ -29,10 +29,14 @@ public class WebDAVClient {
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
         // 如果全局 OkHttpClient 未初始化或凭证不同，则重新创建
-        if (okHttpClient == null || !username.equals(okHttpClient.interceptors().isEmpty() ? "" : "")) {
+        if (okHttpClient == null) {
             okHttpClient = buildOkHttpClient(username, password);
         }
     }
+
+    // 新增 getter 方法
+    public String getUsername() { return username; }
+    public String getPassword() { return password; }
 
     private static OkHttpClient buildOkHttpClient(String user, String pass) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
@@ -54,7 +58,6 @@ public class WebDAVClient {
     // 供 Glide 使用的静态方法
     public static OkHttpClient getOkHttpClient() {
         if (okHttpClient == null) {
-            // 默认匿名
             okHttpClient = buildOkHttpClient("", "");
         }
         return okHttpClient;
