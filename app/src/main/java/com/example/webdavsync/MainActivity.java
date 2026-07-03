@@ -322,10 +322,18 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("删除", (dialog, which) -> {
                     int success = 0;
                     for (PhotoAdapter.PhotoItem item : selected) {
-                        if (item.file.delete()) success++;
+                        if (item.file.delete()) {
+                            success++;
+                        } else {
+                            // 如果删除失败，记录日志
+                            android.util.Log.e("MainActivity", "删除失败: " + item.file.getAbsolutePath());
+                        }
                     }
-                    Toast.makeText(this, "已删除 " + success + " 个本地文件", Toast.LENGTH_SHORT).show();
-                    loadLocalPhotos();
+                    final int finalSuccess = success;
+                    mainHandler.post(() -> {
+                        Toast.makeText(MainActivity.this, "已删除 " + finalSuccess + " 个本地文件", Toast.LENGTH_SHORT).show();
+                        loadLocalPhotos();
+                    });
                 })
                 .setNegativeButton("取消", null)
                 .show();
