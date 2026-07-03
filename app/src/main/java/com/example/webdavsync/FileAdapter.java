@@ -1,7 +1,6 @@
 package com.example.webdavsync;
 
 import android.content.Context;
-import android.graphics.Bitmap;
 import android.media.ThumbnailUtils;
 import android.provider.MediaStore;
 import android.view.LayoutInflater;
@@ -18,7 +17,6 @@ import com.bumptech.glide.request.RequestOptions;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -65,21 +63,18 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
         holder.tvName.setText(item.displayName);
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 云端状态标记
         if (isLocal && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 文件大小
         if (item.fileSize > 0) {
             holder.tvSize.setText(formatFileSize(item.fileSize));
         } else {
             holder.tvSize.setText("");
         }
 
-        // 视频标记
         if (item.isVideo) {
             holder.ivVideoBadge.setVisibility(View.VISIBLE);
         } else {
@@ -87,29 +82,8 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
         }
 
         // 加载缩略图
-        loadThumbnail(holder.ivThumbnail, item);
-
-        // 点击事件
-        holder.itemView.setOnClickListener(v -> {
-            item.isSelected = !item.isSelected;
-            holder.cbSelect.setChecked(item.isSelected);
-            if (listener != null) {
-                listener.onItemClick(item, position);
-            }
-        });
-
-        holder.cbSelect.setOnClickListener(v -> {
-            item.isSelected = !item.isSelected;
-            holder.cbSelect.setChecked(item.isSelected);
-            if (listener != null) {
-                listener.onItemClick(item, position);
-            }
-        });
-    }
-
-    private void loadThumbnail(ImageView iv, FileItem item) {
         if (isLocal && item.file != null && item.file.exists()) {
-            // 本地文件：使用 Glide 加载缩略图
+            // 本地：使用 Glide
             Glide.with(context)
                     .load(item.file)
                     .apply(new RequestOptions()
@@ -117,21 +91,27 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
                             .override(300, 300)
                             .placeholder(android.R.drawable.ic_menu_gallery)
                             .error(android.R.drawable.ic_menu_gallery))
-                    .into(iv);
+                    .into(holder.ivThumbnail);
         } else if (!isLocal && item.remoteUrl != null) {
-            // 云端文件：通过 URL 加载（需要认证）
-            // 使用 Glide 加载远程图片
-            Glide.with(context)
-                    .load(item.remoteUrl)
-                    .apply(new RequestOptions()
-                            .centerCrop()
-                            .override(300, 300)
-                            .placeholder(android.R.drawable.ic_menu_gallery)
-                            .error(android.R.drawable.ic_menu_gallery))
-                    .into(iv);
+            // 云端：目前只显示默认图标，避免认证失败
+            holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+            // 可扩展为带认证的 Glide，但为简化，保持占位
         } else {
-            iv.setImageResource(android.R.drawable.ic_menu_gallery);
+            holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
+
+        // 点击事件
+        holder.itemView.setOnClickListener(v -> {
+            item.isSelected = !item.isSelected;
+            holder.cbSelect.setChecked(item.isSelected);
+            if (listener != null) listener.onItemClick(item, position);
+        });
+
+        holder.cbSelect.setOnClickListener(v -> {
+            item.isSelected = !item.isSelected;
+            holder.cbSelect.setChecked(item.isSelected);
+            if (listener != null) listener.onItemClick(item, position);
+        });
     }
 
     private String formatFileSize(long size) {
