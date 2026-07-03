@@ -32,7 +32,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     }
 
     public interface OnItemLongClickListener {
-        void onItemLongClick(PhotoItem item, int position); // void，不返回值
+        void onItemLongClick(PhotoItem item, int position);
     }
 
     private OnItemClickListener clickListener;
@@ -71,30 +71,30 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ 彩色边框：选中时背景变蓝
+        // 彩色边框：选中时背景变蓝
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7")); // 浅蓝色
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7"));
             holder.cardView.setCardElevation(8f);
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
         }
 
-        // ★ 云朵标记（彩色透明背景）
+        // 云朵标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
-            holder.tvCloudBadge.setTextColor(Color.parseColor("#1E88E5")); // 蓝色
+            holder.tvCloudBadge.setTextColor(Color.parseColor("#1E88E5"));
             holder.tvCloudBadge.setBackgroundColor(Color.TRANSPARENT);
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记（彩色透明背景）
+        // 手机标记
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
-            holder.tvLocalBadge.setTextColor(Color.parseColor("#43A047")); // 绿色
+            holder.tvLocalBadge.setTextColor(Color.parseColor("#43A047"));
             holder.tvLocalBadge.setBackgroundColor(Color.TRANSPARENT);
         } else {
             holder.tvLocalBadge.setVisibility(View.GONE);
@@ -107,7 +107,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivVideoBadge.setVisibility(View.GONE);
         }
 
-        // 文件名
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
@@ -142,14 +141,14 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // ★ 点击选中（非长按）
+        // 点击选中
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
-        // 长按删除（保留）
+        // 长按删除
         holder.itemView.setOnLongClickListener(v -> {
             if (longClickListener != null) {
                 longClickListener.onItemLongClick(item, position);
