@@ -33,11 +33,6 @@ public class MainActivity extends AppCompatActivity {
     private List<String> configNames = new ArrayList<>();
     private SharedPreferences prefs;
     private String selectedConfigName = null;
-    private WebDAVClient currentClient = null;
-    private String currentServerUrl = "";
-    private String currentUsername = "";
-    private String currentPassword = "";
-
     private Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
@@ -49,7 +44,11 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         loadConfigNames();
         setupListeners();
-        updateConnectionStatus(false);
+        updateConnectionStatus();
+        // 检查是否已有连接
+        if (WebDAVClientHolder.getClient() != null) {
+            updateConnectionStatus();
+        }
     }
 
     private void initViews() {
@@ -92,15 +91,19 @@ public class MainActivity extends AppCompatActivity {
         btnConnect.setOnClickListener(v -> connectToSelected());
 
         btnCloudBrowse.setOnClickListener(v -> {
-            if (currentClient == null) {
+            if (WebDAVClientHolder.getClient() == null) {
                 Toast.makeText(this, "请先连接", Toast.LENGTH_SHORT).show();
                 return;
             }
-            CloudBrowseActivity.start(this, currentClient, currentServerUrl);
+            startActivity(new Intent(this, CloudBrowseActivity.class));
         });
 
         btnLocalBrowse.setOnClickListener(v -> {
-            LocalBrowseActivity.start(this, currentClient, currentServerUrl);
+            if (WebDAVClientHolder.getClient() == null) {
+                Toast.makeText(this, "请先连接", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            startActivity(new Intent(this, LocalBrowseActivity.class));
         });
     }
 
@@ -115,21 +118,32 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // 保存配置详情
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putString("config_" + name + "_server", server);
-        editor.putString("config_" + name + "_username", user);
-        editor.putString("config_" + name + "_password", pass);
+        // 先测试连接
+        Toast.makeText(this, "正在测试连接...", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            WebDAVClient testClient = new WebDAVClient(server, user, pass);
+            boolean success = testClient.testConnection();
+            mainHandler.post(() -> {
+                if (success) {
+                    // 保存配置
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("config_" + name + "_server", server);
+                    editor.putString("config_" + name + "_username", user);
+                    editor.putString("config_" + name + "_password", pass);
 
-        // 保存配置名称列表
-        Set<String> nameSet = prefs.getStringSet(KEY_CONFIG_NAMES, new HashSet<>());
-        nameSet.add(name);
-        editor.putStringSet(KEY_CONFIG_NAMES, nameSet);
-        editor.apply();
+                    Set<String> nameSet = prefs.getStringSet(KEY_CONFIG_NAMES, new HashSet<>());
+                    nameSet.add(name);
+                    editor.putStringSet(KEY_CONFIG_NAMES, nameSet);
+                    editor.apply();
 
-        loadConfigNames();
-        Toast.makeText(this, "配置已保存: " + name, Toast.LENGTH_SHORT).show();
-        clearForm();
+                    loadConfigNames();
+                    Toast.makeText(MainActivity.this, "配置已保存: " + name, Toast.LENGTH_SHORT).show();
+                    clearForm();
+                } else {
+                    Toast.makeText(MainActivity.this, "连接测试失败，配置未保存", Toast.LENGTH_LONG).show();
+                }
+            });
+        }).start();
     }
 
     private void deleteConfig() {
@@ -149,26 +163,15 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
 
         // 如果当前连接的是这个配置，断开
-        if (currentClient != null && selectedConfigName.equals(getCurrentConfigName())) {
-            currentClient = null;
-            updateConnectionStatus(false);
+        if (WebDAVClientHolder.getClient() != null && selectedConfigName.equals(WebDAVClientHolder.getConfigName())) {
+            WebDAVClientHolder.clear();
+            updateConnectionStatus();
         }
 
         loadConfigNames();
         selectedConfigName = null;
         clearForm();
         Toast.makeText(this, "配置已删除", Toast.LENGTH_SHORT).show();
-    }
-
-    private String getCurrentConfigName() {
-        // 从当前连接信息反推配置名（简化处理）
-        for (String name : configNames) {
-            String server = prefs.getString("config_" + name + "_server", "");
-            if (server.equals(currentServerUrl)) {
-                return name;
-            }
-        }
-        return null;
     }
 
     private void loadConfigToForm(String name) {
@@ -212,37 +215,34 @@ public class MainActivity extends AppCompatActivity {
 
             mainHandler.post(() -> {
                 if (success) {
-                    currentClient = client;
-                    currentServerUrl = server;
-                    currentUsername = user;
-                    currentPassword = pass;
-                    updateConnectionStatus(true);
+                    WebDAVClientHolder.setClient(client, selectedConfigName);
+                    updateConnectionStatus();
                     Toast.makeText(MainActivity.this, "连接成功: " + selectedConfigName, Toast.LENGTH_LONG).show();
                 } else {
-                    currentClient = null;
-                    updateConnectionStatus(false);
+                    WebDAVClientHolder.clear();
+                    updateConnectionStatus();
                     Toast.makeText(MainActivity.this, "连接失败，请检查配置", Toast.LENGTH_LONG).show();
                 }
             });
         }).start();
     }
 
-    private void updateConnectionStatus(boolean connected) {
-        if (connected && currentClient != null) {
-            tvConnectionStatus.setText("✅ 已连接: " + selectedConfigName + " (" + currentServerUrl + ")");
+    private void updateConnectionStatus() {
+        if (WebDAVClientHolder.getClient() != null) {
+            String name = WebDAVClientHolder.getConfigName();
+            tvConnectionStatus.setText("✅ 已连接: " + name);
             btnCloudBrowse.setEnabled(true);
+            btnLocalBrowse.setEnabled(true);
         } else {
             tvConnectionStatus.setText("❌ 未连接");
             btnCloudBrowse.setEnabled(false);
+            btnLocalBrowse.setEnabled(false);
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // 如果连接状态丢失，刷新
-        if (currentClient != null) {
-            // 保持连接
-        }
+        updateConnectionStatus();
     }
 }
