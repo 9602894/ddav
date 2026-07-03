@@ -1,13 +1,10 @@
 package com.example.webdavsync;
 
-import android.app.Activity;
-import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -31,16 +28,9 @@ public class LocalBrowseActivity extends AppCompatActivity {
     private List<String> filePaths = new ArrayList<>(); // 完整路径
     private String currentPath;
     private WebDAVClient client;
-    private String serverUrl;
 
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Set<String> remoteFileNames = new HashSet<>();
-
-    public static void start(Activity from, WebDAVClient client, String serverUrl) {
-        Intent intent = new Intent(from, LocalBrowseActivity.class);
-        intent.putExtra("server_url", serverUrl);
-        from.startActivity(intent);
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,9 +43,7 @@ public class LocalBrowseActivity extends AppCompatActivity {
         btnLocalUp = findViewById(R.id.btn_local_up);
         btnUploadSelected = findViewById(R.id.btn_upload_selected);
 
-        serverUrl = getIntent().getStringExtra("server_url");
         client = WebDAVClientHolder.getClient();
-
         if (client == null) {
             Toast.makeText(this, "未连接到服务器，请先连接", Toast.LENGTH_LONG).show();
             finish();
@@ -76,12 +64,13 @@ public class LocalBrowseActivity extends AppCompatActivity {
                 return;
             }
             String fullPath = filePaths.get(position);
-            File file = new File(fullPath);
-            if (file.isDirectory()) {
-                loadLocalDirectory(fullPath);
-            } else {
-                // 点击文件显示信息
-                Toast.makeText(LocalBrowseActivity.this, "文件: " + item, Toast.LENGTH_SHORT).show();
+            if (fullPath != null) {
+                File file = new File(fullPath);
+                if (file.isDirectory()) {
+                    loadLocalDirectory(fullPath);
+                } else {
+                    Toast.makeText(LocalBrowseActivity.this, "文件: " + item, Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -108,7 +97,10 @@ public class LocalBrowseActivity extends AppCompatActivity {
             Set<String> remoteNames = new HashSet<>();
             for (String item : remoteItems) {
                 if (!item.endsWith("/")) {
-                    remoteNames.add(item);
+                    // 提取文件名（可能带路径，我们只取最后一部分）
+                    int lastSlash = item.lastIndexOf('/');
+                    String name = lastSlash > 0 ? item.substring(lastSlash + 1) : item;
+                    remoteNames.add(name);
                 }
             }
             remoteFileNames = remoteNames;
@@ -137,7 +129,7 @@ public class LocalBrowseActivity extends AppCompatActivity {
                         filePaths.add(dir.getParentFile().getAbsolutePath());
                     }
 
-                    // 先添加目录，再添加文件
+                    // 先收集目录和文件
                     List<File> dirs = new ArrayList<>();
                     List<File> fileList = new ArrayList<>();
                     for (File f : files) {
@@ -148,7 +140,6 @@ public class LocalBrowseActivity extends AppCompatActivity {
                         }
                     }
 
-                    // 排序
                     java.util.Collections.sort(dirs, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
                     java.util.Collections.sort(fileList, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
 
