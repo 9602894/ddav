@@ -40,6 +40,7 @@ import java.util.Set;
 public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSIONS = 100;
+    private static final int REQUEST_MANAGE_STORAGE = 101;
 
     private RecyclerView rvPhotos;
     private TextView tvConnectionStatus, tvPhotoCount, tvSelectedCount;
@@ -58,18 +59,24 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // 写入构建信息
         writeBuildInfo();
-
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
 
+        // 请求存储权限（包括 Android 10+ 的全文件访问）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             String[] perms = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
                 return;
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Intent intent = new Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                intent.setData(Uri.parse("package:" + getPackageName()));
+                startActivityForResult(intent, REQUEST_MANAGE_STORAGE);
             }
         }
 
@@ -105,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
         btnSync = findViewById(R.id.btn_sync);
         btnCloud = findViewById(R.id.btn_cloud);
         btnDeleteLocal = findViewById(R.id.btn_delete_local);
-        btnDebug = findViewById(R.id.btn_debug); // 新增调试按钮
+        btnDebug = findViewById(R.id.btn_debug);
         ivSettings = findViewById(R.id.iv_settings);
         etRemoteDir = findViewById(R.id.et_remote_dir);
     }
@@ -116,7 +123,12 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
-        adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
+        adapter.setOnItemClickListener((item, position) -> {
+            // 点击切换选中状态
+            item.isSelected = !item.isSelected;
+            adapter.notifyItemChanged(position);
+            updateSelectedCount();
+        });
         adapter.setOnItemLongClickListener((item, position) -> {
             showDeleteLocalDialog(item, position);
         });
@@ -158,7 +170,6 @@ public class MainActivity extends AppCompatActivity {
                     remoteFileNames.add(f);
                 }
             }
-            // 调试：打印云端文件名
             android.util.Log.d("WebDAV", "Remote files: " + remoteFileNames);
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
@@ -229,13 +240,14 @@ public class MainActivity extends AppCompatActivity {
         });
         btnDeleteLocal.setOnClickListener(v -> deleteSelectedLocal());
 
-        // ★ 调试按钮：强制显示云标记
         btnDebug.setOnClickListener(v -> {
             for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                 item.isOnCloud = true;
+                item.isSelected = true; // 调试时同时选中，测试彩色边框
             }
             adapter.notifyDataSetChanged();
-            Toast.makeText(this, "已强制显示云标记", Toast.LENGTH_SHORT).show();
+            updateSelectedCount();
+            Toast.makeText(this, "已强制显示云标记和选中状态", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -347,7 +359,7 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show();
                         loadLocalPhotos();
                     } else {
-                        Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "删除失败，请检查权限", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNegativeButton("取消", null)
