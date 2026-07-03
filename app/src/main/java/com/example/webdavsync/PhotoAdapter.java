@@ -71,7 +71,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 彩色边框：选中时背景变蓝
+        // 彩色边框
         if (item.isSelected) {
             holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7"));
             holder.cardView.setCardElevation(8f);
@@ -110,7 +110,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
-        // 缩略图加载
+        // 缩略图
         if (isCloudView && item.remoteUrl != null) {
             Glide.with(context)
                     .load(item.remoteUrl)
