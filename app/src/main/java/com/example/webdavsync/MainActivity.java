@@ -26,15 +26,9 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
@@ -94,16 +88,10 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
-        // 点击切换选中
         adapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             adapter.notifyItemChanged(position);
             updateSelectedCount();
-        });
-
-        // 长按删除改为弹出对话框（仍保留，但主要靠按钮）
-        adapter.setOnItemLongClickListener((item, position) -> {
-            // 可以留空或显示提示
         });
     }
 
