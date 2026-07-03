@@ -31,7 +31,9 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         void onItemClick(PhotoItem item, int position);
     }
 
-    // ★ 移除长按监听接口
+    // 移除长按监听接口，不再需要
+    // public interface OnItemLongClickListener { ... }
+
     private OnItemClickListener clickListener;
 
     public PhotoAdapter(Context context) {
@@ -66,7 +68,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ 彩色边框
+        // 彩色边框
         if (item.isSelected) {
             holder.cardView.setCardBackgroundColor(Color.parseColor("#4FC3F7"));
             holder.cardView.setCardElevation(8f);
@@ -75,7 +77,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.cardView.setCardElevation(2f);
         }
 
-        // ★ 云朵标记
+        // 云朵标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -85,7 +87,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记
+        // 手机标记
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -136,20 +138,26 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // ★ 点击：仅切换选中状态
+        // ★ 点击事件：切换选中状态，并回调
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
-            if (clickListener != null) clickListener.onItemClick(item, position);
+            if (clickListener != null) {
+                clickListener.onItemClick(item, position);
+            }
         });
 
-        // ★ 移除长按监听，删除只能由按钮触发
-        holder.itemView.setOnLongClickListener(null);
+        // 复选框点击同样切换
         holder.cbSelect.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
-            if (clickListener != null) clickListener.onItemClick(item, position);
+            if (clickListener != null) {
+                clickListener.onItemClick(item, position);
+            }
         });
+
+        // ★ 移除长按监听，不再触发删除
+        // holder.itemView.setOnLongClickListener(null);
     }
 
     @Override
