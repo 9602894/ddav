@@ -71,17 +71,13 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ Pho 风格选中效果：醒目橙色边框 + 浅橙色背景 + 高阴影
+        // ★ Pho 风格选中效果：深色背景 + 高阴影
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#FFF3E0")); // 浅橙色
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#FFE0B2")); // 深橙色
             holder.cardView.setCardElevation(16f);
-            holder.cardView.setStrokeColor(Color.parseColor("#FF9800"));   // 橙色边框
-            holder.cardView.setStrokeWidth(4);                             // 4dp
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
-            holder.cardView.setStrokeColor(Color.TRANSPARENT);
-            holder.cardView.setStrokeWidth(0);
         }
 
         // ★ 云朵标记（半透明蓝色背景，白色文字，圆角）
