@@ -65,23 +65,22 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
-        // ★ 点击处理：判断是否为目录（以 '/' 结尾或不含 '.'）
+        // ★ Pho 风格点击：目录进入，文件选中
         adapter.setOnItemClickListener((item, position) -> {
-            boolean isDir = item.name.endsWith("/") || !item.name.contains(".");
+            // ★ 判断目录：以 '/' 结尾 或 从服务器返回时已标记为目录
+            boolean isDir = item.name.endsWith("/");
             if (isDir) {
-                // 进入子目录
-                String subPath = item.name.endsWith("/") ? item.name.substring(0, item.name.length() - 1) : item.name;
+                // 进入子目录（移除末尾的 /）
+                String subPath = item.name.substring(0, item.name.length() - 1);
                 String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
                 loadDirectory(newPath);
             } else {
-                // 切换选中
+                // 切换选中状态
                 item.isSelected = !item.isSelected;
                 adapter.notifyItemChanged(position);
                 updateSelectedCount();
             }
         });
-
-        // 长按不处理（由按钮删除）
 
         loadDirectory("");
 
@@ -145,7 +144,8 @@ public class CloudActivity extends AppCompatActivity {
                             fi.name = item;
                             fi.displayName = item;
                             fi.isOnCloud = true;
-                            boolean isDir = item.endsWith("/") || !item.contains(".");
+                            // ★ 判断是否为目录
+                            boolean isDir = item.endsWith("/");
                             fi.isOnLocal = !isDir && localFileNames.contains(item);
                             if (!isDir) {
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
@@ -183,7 +183,7 @@ public class CloudActivity extends AppCompatActivity {
     private void downloadSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
+            if (item.isSelected && !item.name.endsWith("/")) {
                 selected.add(item);
             }
         }
@@ -233,7 +233,7 @@ public class CloudActivity extends AppCompatActivity {
     private void deleteSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
+            if (item.isSelected && !item.name.endsWith("/")) {
                 selected.add(item);
             }
         }
