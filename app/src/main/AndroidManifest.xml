@@ -18,10 +18,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- 新增 -->
-        <activity android:name=".RemoteBrowseActivity" />
-        <activity android:name=".UploadActivity" />
-        <activity android:name=".SyncActivity" />
-        <activity android:name=".CloudFilesActivity" />
+        <activity android:name=".CloudBrowseActivity" />
+        <activity android:name=".LocalBrowseActivity" />
     </application>
 </manifest>
