@@ -57,10 +57,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            String[] perms = {
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-            };
+            String[] perms = {Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE};
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
@@ -130,9 +127,7 @@ public class MainActivity extends AppCompatActivity {
             List<String> files = webdavClient.listDirectory("");
             remoteFileNames.clear();
             for (String f : files) {
-                if (!f.endsWith("/")) {
-                    remoteFileNames.add(f);
-                }
+                if (!f.endsWith("/")) remoteFileNames.add(f);
             }
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
@@ -145,29 +140,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadLocalPhotos() {
         tvPhotoCount.setText("加载中...");
-
         new Thread(() -> {
             List<PhotoAdapter.PhotoItem> items = new ArrayList<>();
-
-            String[] projection = {
-                    MediaStore.Images.Media.DATA,
-                    MediaStore.Images.Media.DISPLAY_NAME,
-                    MediaStore.Images.Media.DATE_MODIFIED
-            };
-            Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-            Cursor cursor = getContentResolver().query(uri, projection, null, null,
-                    MediaStore.Images.Media.DATE_MODIFIED + " DESC");
-
+            String[] projection = {MediaStore.Images.Media.DATA, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_MODIFIED};
+            Cursor cursor = getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection, null, null, MediaStore.Images.Media.DATE_MODIFIED + " DESC");
             if (cursor != null) {
-                int dataIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
-                int nameIndex = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
-                int dateIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED);
-
+                int dataIdx = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
+                int nameIdx = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
+                int dateIdx = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED);
                 while (cursor.moveToNext()) {
-                    String path = cursor.getString(dataIndex);
-                    String name = cursor.getString(nameIndex);
-                    long date = cursor.getLong(dateIndex);
-
+                    String path = cursor.getString(dataIdx);
+                    String name = cursor.getString(nameIdx);
+                    long date = cursor.getLong(dateIdx);
                     if (path != null) {
                         File file = new File(path);
                         if (file.exists()) {
@@ -184,7 +169,6 @@ public class MainActivity extends AppCompatActivity {
                 }
                 cursor.close();
             }
-
             final List<PhotoAdapter.PhotoItem> finalItems = items;
             mainHandler.post(() -> {
                 adapter.setItems(finalItems);
@@ -203,12 +187,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupListeners() {
-        ivSettings.setOnClickListener(v -> {
-            startActivity(new Intent(this, SettingsActivity.class));
-        });
-
+        ivSettings.setOnClickListener(v -> startActivity(new Intent(this, SettingsActivity.class)));
         btnSync.setOnClickListener(v -> syncToCloud());
-
         btnCloud.setOnClickListener(v -> {
             if (webdavClient == null) {
                 Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
@@ -216,7 +196,6 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(new Intent(this, CloudActivity.class));
         });
-
         btnDeleteLocal.setOnClickListener(v -> deleteSelectedLocal());
     }
 
@@ -227,17 +206,14 @@ public class MainActivity extends AppCompatActivity {
                 selected.add(item);
             }
         }
-
         if (selected.isEmpty()) {
             Toast.makeText(this, "请先选择照片", Toast.LENGTH_SHORT).show();
             return;
         }
-
         if (webdavClient == null) {
             Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
             return;
         }
-
         String remoteDir = etRemoteDir.getText().toString().trim();
         final String finalRemoteDir = remoteDir.isEmpty() ? "" : remoteDir;
 
@@ -273,29 +249,18 @@ public class MainActivity extends AppCompatActivity {
     private void performUpload(List<PhotoAdapter.PhotoItem> selected, final String remoteDir) {
         Toast.makeText(this, "开始同步 " + selected.size() + " 张照片到 /" + remoteDir, Toast.LENGTH_SHORT).show();
         btnSync.setEnabled(false);
-
         new Thread(() -> {
             int success = 0, fail = 0;
             for (PhotoAdapter.PhotoItem item : selected) {
                 boolean ok = webdavClient.uploadFile(remoteDir, item.file);
-                if (ok) {
-                    success++;
-                    item.isOnCloud = true;
-                } else {
-                    fail++;
-                }
+                if (ok) { success++; item.isOnCloud = true; } else { fail++; }
             }
-
             final int finalSuccess = success;
             final int finalFail = fail;
             mainHandler.post(() -> {
                 btnSync.setEnabled(true);
-                Toast.makeText(MainActivity.this,
-                        "同步完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
-                        Toast.LENGTH_LONG).show();
-                for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-                    item.isSelected = false;
-                }
+                Toast.makeText(MainActivity.this, "同步完成: 成功 " + finalSuccess + ", 失败 " + finalFail, Toast.LENGTH_LONG).show();
+                for (PhotoAdapter.PhotoItem item : adapter.getItems()) item.isSelected = false;
                 adapter.notifyDataSetChanged();
                 updateSelectedCount();
                 loadRemoteFileList();
@@ -303,6 +268,7 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
+    // ★ 本地删除：选中的文件删除
     private void deleteSelectedLocal() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
@@ -314,16 +280,13 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
             return;
         }
-
         new AlertDialog.Builder(this)
                 .setTitle("删除本地文件")
-                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？（仅删除本地文件，不影响云端）")
+                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？（仅删除本地文件）")
                 .setPositiveButton("删除", (dialog, which) -> {
                     int success = 0;
                     for (PhotoAdapter.PhotoItem item : selected) {
-                        if (item.file.delete()) {
-                            success++;
-                        }
+                        if (item.file.delete()) success++;
                     }
                     final int finalSuccess = success;
                     mainHandler.post(() -> {
@@ -353,14 +316,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_PERMISSIONS) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 loadLocalPhotos();
             } else {
-                Toast.makeText(this, "需要存储权限才能访问相册", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "需要存储权限", Toast.LENGTH_LONG).show();
                 finish();
             }
         }
