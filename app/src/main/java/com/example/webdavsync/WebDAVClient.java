@@ -3,7 +3,9 @@ package com.example.webdavsync;
 import okhttp3.*;
 import okhttp3.Credentials;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -27,11 +29,26 @@ public class WebDAVClient {
                 .build();
     }
 
+    public String getServerUrl() {
+        return serverUrl;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
     private Request.Builder authRequest() {
         return new Request.Builder()
                 .header("Authorization", Credentials.basic(username, password));
     }
 
+    /**
+     * 测试连接是否成功
+     */
     public boolean testConnection() {
         try {
             Request request = authRequest()
@@ -79,7 +96,6 @@ public class WebDAVClient {
                 }
 
                 String body = response.body().string();
-                // 保存原始响应（用于调试，但这里不保留）
                 // 尝试两种解析模式
 
                 // 模式1：标准 <href> 标签（可能带命名空间）
@@ -88,7 +104,6 @@ public class WebDAVClient {
                 boolean found = false;
                 while (matcher.find()) {
                     String href = matcher.group(1);
-                    // 对 href 进行解码（如果包含 % 编码，但多数情况不需要）
                     // 跳过当前目录本身
                     if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) {
                         continue;
@@ -127,7 +142,6 @@ public class WebDAVClient {
 
                 if (!found) {
                     // 可能服务器返回了空目录或响应格式非常特殊
-                    // 检查 body 是否包含 "empty" 或类似信息
                     if (body.contains("empty") || body.contains("Empty")) {
                         entries.add("(空目录)");
                     } else {
@@ -144,6 +158,12 @@ public class WebDAVClient {
         return entries;
     }
 
+    /**
+     * 上传文件到远程目录
+     * @param remoteDir 远程目录（相对路径），如 "" 或 "photos"
+     * @param localFile 本地文件对象
+     * @return 是否成功
+     */
     public boolean uploadFile(String remoteDir, File localFile) {
         try {
             String remotePath = (remoteDir == null || remoteDir.isEmpty()) ? localFile.getName()
@@ -160,6 +180,41 @@ public class WebDAVClient {
 
             try (Response response = client.newCall(request).execute()) {
                 return response.isSuccessful();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * 下载远程文件到本地指定目录
+     * @param remotePath 远程文件完整路径（相对路径，如 "photos/abc.jpg"）
+     * @param destFile 本地目标文件
+     * @return 是否成功
+     */
+    public boolean downloadFile(String remotePath, File destFile) {
+        try {
+            String url = serverUrl + "/" + remotePath.replace("//", "/");
+            Request request = authRequest()
+                    .url(url)
+                    .get()
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    return false;
+                }
+                InputStream inputStream = response.body().byteStream();
+                FileOutputStream fos = new FileOutputStream(destFile);
+                byte[] buffer = new byte[8192];
+                int len;
+                while ((len = inputStream.read(buffer)) != -1) {
+                    fos.write(buffer, 0, len);
+                }
+                fos.close();
+                inputStream.close();
+                return true;
             }
         } catch (IOException e) {
             e.printStackTrace();
