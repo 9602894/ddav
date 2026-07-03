@@ -1,34 +1,97 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp"
-    android:background="?android:attr/selectableItemBackground">
+    android:padding="4dp">
 
-    <ImageView
-        android:id="@+id/iv_thumbnail"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:scaleType="centerCrop"
-        android:src="@android:drawable/ic_menu_gallery" />
-
-    <TextView
-        android:id="@+id/tv_name"
+    <androidx.cardview.widget.CardView
+        xmlns:card_view="http://schemas.android.com/apk/res-auto"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_toEndOf="@+id/iv_thumbnail"
-        android:layout_marginStart="12dp"
-        android:text="文件名"
-        android:textSize="14sp"
-        android:ellipsize="middle"
-        android:maxLines="1" />
+        card_view:cardCornerRadius="4dp"
+        card_view:cardElevation="2dp"
+        android:foreground="?android:attr/selectableItemBackground">
 
-    <CheckBox
-        android:id="@+id/cb_select"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentEnd="true"
-        android:layout_centerVertical="true"
-        android:focusable="false"
-        android:clickable="false" />
-</RelativeLayout>
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#ffffff">
+
+            <!-- 缩略图 -->
+            <ImageView
+                android:id="@+id/iv_thumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:scaleType="centerCrop"
+                android:src="@android:drawable/ic_menu_gallery" />
+
+            <!-- 视频标记 -->
+            <ImageView
+                android:id="@+id/iv_video_badge"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_alignTop="@+id/iv_thumbnail"
+                android:layout_alignEnd="@+id/iv_thumbnail"
+                android:layout_margin="8dp"
+                android:src="@android:drawable/ic_media_play"
+                android:visibility="gone"
+                android:background="#88000000"
+                android:padding="4dp" />
+
+            <!-- 文件名（底部） -->
+            <TextView
+                android:id="@+id/tv_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/iv_thumbnail"
+                android:padding="6dp"
+                android:text="文件名"
+                android:textSize="12sp"
+                android:textColor="#333333"
+                android:singleLine="true"
+                android:ellipsize="middle" />
+
+            <!-- 复选框（右上角） -->
+            <CheckBox
+                android:id="@+id/cb_select"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_alignTop="@+id/iv_thumbnail"
+                android:layout_alignEnd="@+id/iv_thumbnail"
+                android:layout_margin="6dp"
+                android:background="@android:color/white"
+                android:button="@null"
+                android:gravity="center"
+                android:text=""
+                android:focusable="false"
+                android:clickable="false" />
+
+            <!-- 云端状态标记（本地界面显示） -->
+            <TextView
+                android:id="@+id/tv_cloud_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignTop="@+id/iv_thumbnail"
+                android:layout_alignStart="@+id/iv_thumbnail"
+                android:layout_margin="6dp"
+                android:padding="2dp 6dp"
+                android:text="☁️"
+                android:textSize="16sp"
+                android:background="#cc000000"
+                android:textColor="#ffffff"
+                android:visibility="gone" />
+
+            <!-- 文件大小（底部右侧） -->
+            <TextView
+                android:id="@+id/tv_size"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/iv_thumbnail"
+                android:layout_alignEnd="@+id/iv_thumbnail"
+                android:padding="4dp"
+                android:text=""
+                android:textSize="10sp"
+                android:textColor="#888888" />
+        </RelativeLayout>
+    </androidx.cardview.widget.CardView>
+</FrameLayout>
