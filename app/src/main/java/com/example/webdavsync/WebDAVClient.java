@@ -31,8 +31,12 @@ public class WebDAVClient {
     public String getServerUrl() { return serverUrl; }
 
     private Request.Builder authRequest() {
-        return new Request.Builder()
-                .header("Authorization", Credentials.basic(username, password));
+        Request.Builder builder = new Request.Builder();
+        // 仅当用户名和密码均不为空时才添加认证
+        if (username != null && !username.isEmpty() && password != null) {
+            builder.header("Authorization", Credentials.basic(username, password));
+        }
+        return builder;
     }
 
     public boolean testConnection() {
