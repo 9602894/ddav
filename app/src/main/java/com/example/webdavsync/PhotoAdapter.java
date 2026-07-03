@@ -174,25 +174,34 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         return ext.matches("jpg|jpeg|png|gif|bmp|webp");
     }
 
+    // 根据文件扩展名返回对应的图标资源 ID（使用 Android 内置图标）
     private int getFileTypeIcon(String name) {
         String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
         switch (ext) {
-            case "pdf": return android.R.drawable.ic_menu_agenda;
+            case "pdf":
+                return android.R.drawable.ic_menu_agenda;
             case "doc":
-            case "docx": return android.R.drawable.ic_menu_edit;
+            case "docx":
+                return android.R.drawable.ic_menu_edit;
             case "xls":
-            case "xlsx": return android.R.drawable.ic_menu_manage;
+            case "xlsx":
+                return android.R.drawable.ic_menu_manage;
             case "ppt":
-            case "pptx": return android.R.drawable.ic_menu_slideshow;
+            case "pptx":
+                return android.R.drawable.ic_menu_slideshow;
             case "zip":
             case "rar":
-            case "7z": return android.R.drawable.ic_menu_archive; // 可能不存在，用 gallery 替代
+            case "7z":
+                return android.R.drawable.ic_menu_gallery; // 无 archive 图标，使用 gallery
             case "mp3":
             case "wav":
-            case "flac": return android.R.drawable.ic_menu_my_calendar;
+            case "flac":
+                return android.R.drawable.ic_menu_my_calendar;
             case "txt":
-            case "log": return android.R.drawable.ic_menu_info_details;
-            default: return android.R.drawable.ic_menu_gallery;
+            case "log":
+                return android.R.drawable.ic_menu_info_details;
+            default:
+                return android.R.drawable.ic_menu_gallery;
         }
     }
 
