@@ -58,6 +58,12 @@
             android:text="测试连接" />
 
         <Button
+            android:id="@+id/btn_save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="保存配置" />
+
+        <Button
             android:id="@+id/btn_upload"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -74,10 +80,5 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="查看云端文件" />
-        <Button
-    android:id="@+id/btn_save"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:text="保存配置" />
     </LinearLayout>
 </ScrollView>
