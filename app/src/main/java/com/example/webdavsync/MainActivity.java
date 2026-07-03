@@ -239,16 +239,51 @@ public class MainActivity extends AppCompatActivity {
         }
 
         String remoteDir = etRemoteDir.getText().toString().trim();
-        // 为 lambda 创建 final 副本
         final String finalRemoteDir = remoteDir.isEmpty() ? "" : remoteDir;
 
-        Toast.makeText(this, "开始同步 " + selected.size() + " 张照片到 /" + finalRemoteDir, Toast.LENGTH_SHORT).show();
+        // 如果目录不为空，检查并创建目录
+        if (!finalRemoteDir.isEmpty()) {
+            new Thread(() -> {
+                boolean dirExists = false;
+                // 检查目录是否存在
+                List<String> dirs = webdavClient.listDirectory("");
+                for (String d : dirs) {
+                    if (d.equals(finalRemoteDir + "/") || d.equals(finalRemoteDir)) {
+                        dirExists = true;
+                        break;
+                    }
+                }
+                if (!dirExists) {
+                    // 创建目录
+                    boolean created = webdavClient.createDirectory(finalRemoteDir);
+                    mainHandler.post(() -> {
+                        if (created) {
+                            Toast.makeText(MainActivity.this, "目录已创建: /" + finalRemoteDir, Toast.LENGTH_SHORT).show();
+                            // 继续上传
+                            performUpload(selected, finalRemoteDir);
+                        } else {
+                            Toast.makeText(MainActivity.this, "创建目录失败: /" + finalRemoteDir, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                } else {
+                    // 目录存在，直接上传
+                    mainHandler.post(() -> performUpload(selected, finalRemoteDir));
+                }
+            }).start();
+        } else {
+            // 根目录，直接上传
+            performUpload(selected, "");
+        }
+    }
+
+    private void performUpload(List<PhotoAdapter.PhotoItem> selected, final String remoteDir) {
+        Toast.makeText(this, "开始同步 " + selected.size() + " 张照片到 /" + remoteDir, Toast.LENGTH_SHORT).show();
         btnSync.setEnabled(false);
 
         new Thread(() -> {
             int success = 0, fail = 0;
             for (PhotoAdapter.PhotoItem item : selected) {
-                boolean ok = webdavClient.uploadFile(finalRemoteDir, item.file);
+                boolean ok = webdavClient.uploadFile(remoteDir, item.file);
                 if (ok) {
                     success++;
                     item.isOnCloud = true;
