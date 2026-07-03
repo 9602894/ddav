@@ -98,14 +98,12 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void collectLocalFiles() {
-        localFileNames.clear();
         File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
         if (downloadDir != null && downloadDir.exists()) {
             for (File f : downloadDir.listFiles()) {
                 if (f.isFile()) localFileNames.add(f.getName());
             }
         }
-        // 也可以扫描相册，但为简化，仅扫描 Download
     }
 
     private void loadDirectory(String path) {
@@ -130,21 +128,32 @@ public class CloudActivity extends AppCompatActivity {
 
                     if (!hasError) {
                         for (String item : items) {
-                            if (item.endsWith("/")) continue;
-                            PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
-                            fi.name = item;
-                            fi.displayName = item;
-                            fi.isOnCloud = true;
-                            fi.isOnLocal = localFileNames.contains(item);
-                            String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
-                            fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
-                            String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
-                            fi.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
-                            fi.dateModified = 0;
-                            list.add(fi);
+                            if (item.endsWith("/")) {
+                                // 显示目录（可点击进入）
+                                PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
+                                fi.name = item;
+                                fi.displayName = item;
+                                fi.isOnCloud = true;
+                                fi.isOnLocal = false;
+                                fi.remoteUrl = null;
+                                fi.isVideo = false;
+                                list.add(fi);
+                            } else {
+                                PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
+                                fi.name = item;
+                                fi.displayName = item;
+                                fi.isOnCloud = true;
+                                fi.isOnLocal = localFileNames.contains(item);
+                                String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
+                                fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
+                                String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
+                                fi.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
+                                fi.dateModified = 0;
+                                list.add(fi);
+                            }
                         }
                         Collections.sort(list, (a, b) -> a.name.compareToIgnoreCase(b.name));
-                        tvCloudCount.setText(list.size() + " 个文件");
+                        tvCloudCount.setText(list.size() + " 个项目");
                     }
                 } else {
                     tvCloudCount.setText("空目录");
@@ -167,7 +176,7 @@ public class CloudActivity extends AppCompatActivity {
     private void downloadSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected) {
+            if (item.isSelected && !item.name.endsWith("/")) {
                 selected.add(item);
             }
         }
@@ -221,7 +230,7 @@ public class CloudActivity extends AppCompatActivity {
     private void deleteSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected) {
+            if (item.isSelected && !item.name.endsWith("/")) {
                 selected.add(item);
             }
         }
@@ -258,6 +267,10 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void showDeleteDialog(PhotoAdapter.PhotoItem item, int position) {
+        if (item.name.endsWith("/")) {
+            Toast.makeText(this, "不能删除目录", Toast.LENGTH_SHORT).show();
+            return;
+        }
         new AlertDialog.Builder(this)
                 .setTitle("删除文件")
                 .setMessage("确定要删除 \"" + item.name + "\" 吗？")
