@@ -72,6 +72,15 @@ public class CloudActivity extends AppCompatActivity {
 
         loadDirectory("");
 
+        // 点击路径返回根目录
+        tvCloudPath.setOnClickListener(v -> {
+            if (!currentPath.isEmpty()) {
+                loadDirectory("");
+            } else {
+                Toast.makeText(this, "已在根目录", Toast.LENGTH_SHORT).show();
+            }
+        });
+
         ivBack.setOnClickListener(v -> finish());
 
         btnUp.setOnClickListener(v -> {
