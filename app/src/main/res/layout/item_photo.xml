@@ -37,7 +37,7 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
-            <!-- 云朵标记（Pho 风格：半透明蓝色背景） -->
+            <!-- ★ 云朵标记（使用 drawable 背景） -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -45,17 +45,17 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignStart="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:text="☁️"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:textColor="#FFFFFF"
-                android:background="#801E88E5"
+                android:background="@drawable/badge_cloud_bg"
                 android:visibility="gone" />
 
-            <!-- 手机标记（Pho 风格：半透明绿色背景） -->
+            <!-- ★ 手机标记（使用 drawable 背景） -->
             <TextView
                 android:id="@+id/tv_local_badge"
                 android:layout_width="wrap_content"
@@ -63,14 +63,14 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_toEndOf="@+id/tv_cloud_badge"
                 android:layout_margin="6dp"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
                 android:paddingTop="2dp"
                 android:paddingBottom="2dp"
                 android:text="📱"
-                android:textSize="20sp"
+                android:textSize="16sp"
                 android:textColor="#FFFFFF"
-                android:background="#8043A047"
+                android:background="@drawable/badge_local_bg"
                 android:visibility="gone" />
 
             <TextView
