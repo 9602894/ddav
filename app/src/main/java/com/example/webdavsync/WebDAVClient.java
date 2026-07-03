@@ -17,7 +17,6 @@ public class WebDAVClient {
     private final String username;
     private final String password;
 
-    // 静态 OkHttpClient 实例，用于 Glide（带认证）
     private static OkHttpClient okHttpClient;
 
     public WebDAVClient(String serverUrl, String username, String password) {
@@ -28,18 +27,11 @@ public class WebDAVClient {
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build();
-        // 更新全局 OkHttpClient（用于 Glide）
         updateOkHttpClient(this.username, this.password);
     }
 
-    // Getter 方法（修复编译错误）
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
+    public String getUsername() { return username; }
+    public String getPassword() { return password; }
 
     private static OkHttpClient buildOkHttpClient(String user, String pass) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
@@ -58,7 +50,6 @@ public class WebDAVClient {
         return builder.build();
     }
 
-    // 供 Glide 使用的静态方法
     public static OkHttpClient getOkHttpClient() {
         if (okHttpClient == null) {
             okHttpClient = buildOkHttpClient("", "");
@@ -66,14 +57,11 @@ public class WebDAVClient {
         return okHttpClient;
     }
 
-    // 更新全局 OkHttpClient（当凭证改变时）
     public static void updateOkHttpClient(String username, String password) {
         okHttpClient = buildOkHttpClient(username, password);
     }
 
-    public String getServerUrl() {
-        return serverUrl;
-    }
+    public String getServerUrl() { return serverUrl; }
 
     private Request.Builder authRequest() {
         Request.Builder builder = new Request.Builder();
@@ -200,9 +188,22 @@ public class WebDAVClient {
             return false;
         }
     }
+
+    // 删除远程文件
+    public boolean deleteFile(String remotePath) {
+        try {
+            String url = serverUrl + "/" + remotePath.replace("//", "/");
+            Request request = authRequest().url(url).delete().build();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }
 
-// 全局单例持有者
 class WebDAVClientHolder {
     private static WebDAVClient client;
     public static void setClient(WebDAVClient c) { client = c; }
