@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         String username = prefs.getString("username", "");
         String password = prefs.getString("password", "");
 
-        if (!server.isEmpty() && !username.isEmpty()) {
+        if (!server.isEmpty()) {
             webdavClient = new WebDAVClient(server, username, password);
             tvConnectionStatus.setText("🔗 " + server);
             // 后台测试连接
@@ -116,6 +116,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadRemoteFileList() {
+        if (webdavClient == null) return;
         new Thread(() -> {
             List<String> files = webdavClient.listDirectory("");
             remoteFileNames.clear();
@@ -125,7 +126,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             mainHandler.post(() -> {
-                // 更新云端标记
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
                 }
@@ -140,7 +140,6 @@ public class MainActivity extends AppCompatActivity {
         new Thread(() -> {
             List<PhotoAdapter.PhotoItem> items = new ArrayList<>();
 
-            // 使用 MediaStore 查询照片
             String[] projection = {
                     MediaStore.Images.Media.DATA,
                     MediaStore.Images.Media.DISPLAY_NAME,
@@ -167,7 +166,6 @@ public class MainActivity extends AppCompatActivity {
                             item.file = file;
                             item.dateModified = date;
                             item.isOnCloud = remoteFileNames.contains(name);
-                            // 判断是否为视频（通过路径或扩展名）
                             String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
                             item.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
                             items.add(item);
@@ -250,13 +248,11 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this,
                         "同步完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
                         Toast.LENGTH_LONG).show();
-                // 清除选中状态
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                     item.isSelected = false;
                 }
                 adapter.notifyDataSetChanged();
                 updateSelectedCount();
-                // 重新加载远程文件列表
                 loadRemoteFileList();
             });
         }).start();
@@ -278,7 +274,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 从设置返回后重新加载配置
         loadSettings();
     }
 }
