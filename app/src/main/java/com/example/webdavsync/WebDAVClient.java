@@ -29,8 +29,6 @@ public class WebDAVClient {
     }
 
     public String getServerUrl() { return serverUrl; }
-    public String getUsername() { return username; }
-    public String getPassword() { return password; }
 
     private Request.Builder authRequest() {
         return new Request.Builder()
