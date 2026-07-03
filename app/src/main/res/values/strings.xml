@@ -1,3 +1,7 @@
 <resources>
-    <string name="app_name">WebDAV Sync</string>
+    <string name="app_name">Pho Sync</string>
+    <string name="settings">设置</string>
+    <string name="cloud">云端</string>
+    <string name="sync">同步到云端</string>
+    <string name="download">下载到本地</string>
 </resources>
