@@ -70,7 +70,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 选中状态：彩色边框
+        // 彩色边框（选中时蓝色背景+高亮）
         if (item.isSelected) {
             holder.cardView.setCardBackgroundColor(context.getResources().getColor(android.R.color.holo_blue_light));
             holder.cardView.setCardElevation(8f);
@@ -79,17 +79,17 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.cardView.setCardElevation(2f);
         }
 
-        // 云朵标记（透明背景彩色）
+        // 云朵标记（透明背景，彩色云）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
             holder.tvCloudBadge.setTextColor(context.getResources().getColor(android.R.color.holo_blue_dark));
-            holder.tvCloudBadge.setBackgroundColor(0x00000000);
+            holder.tvCloudBadge.setBackgroundColor(0x00000000); // 透明
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记（透明背景彩色）
+        // 手机标记（透明背景，彩色手机）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -106,7 +106,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivVideoBadge.setVisibility(View.GONE);
         }
 
-        // 显示文件名
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
@@ -146,14 +145,14 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
         }
 
-        // 点击事件
+        // 点击事件（切换选中）
         holder.itemView.setOnClickListener(v -> {
             item.isSelected = !item.isSelected;
             holder.cbSelect.setChecked(item.isSelected);
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
-        // 长按事件
+        // 长按事件（删除）
         holder.itemView.setOnLongClickListener(v -> {
             if (longClickListener != null) {
                 longClickListener.onItemLongClick(item, position);
@@ -174,34 +173,25 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         return ext.matches("jpg|jpeg|png|gif|bmp|webp");
     }
 
-    // 根据文件扩展名返回对应的图标资源 ID（使用 Android 内置图标）
     private int getFileTypeIcon(String name) {
         String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
         switch (ext) {
-            case "pdf":
-                return android.R.drawable.ic_menu_agenda;
+            case "pdf": return android.R.drawable.ic_menu_agenda;
             case "doc":
-            case "docx":
-                return android.R.drawable.ic_menu_edit;
+            case "docx": return android.R.drawable.ic_menu_edit;
             case "xls":
-            case "xlsx":
-                return android.R.drawable.ic_menu_manage;
+            case "xlsx": return android.R.drawable.ic_menu_manage;
             case "ppt":
-            case "pptx":
-                return android.R.drawable.ic_menu_slideshow;
+            case "pptx": return android.R.drawable.ic_menu_slideshow;
             case "zip":
             case "rar":
-            case "7z":
-                return android.R.drawable.ic_menu_gallery; // 无 archive 图标，使用 gallery
+            case "7z": return android.R.drawable.ic_menu_gallery;
             case "mp3":
             case "wav":
-            case "flac":
-                return android.R.drawable.ic_menu_my_calendar;
+            case "flac": return android.R.drawable.ic_menu_my_calendar;
             case "txt":
-            case "log":
-                return android.R.drawable.ic_menu_info_details;
-            default:
-                return android.R.drawable.ic_menu_gallery;
+            case "log": return android.R.drawable.ic_menu_info_details;
+            default: return android.R.drawable.ic_menu_gallery;
         }
     }
 
