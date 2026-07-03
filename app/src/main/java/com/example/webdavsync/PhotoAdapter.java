@@ -10,6 +10,7 @@ import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
@@ -25,7 +26,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
     private boolean showLocalBadge = false;
     private boolean isCloudView = false;
 
-    // 拆分监听器接口
     public interface OnItemClickListener {
         void onItemClick(PhotoItem item, int position);
     }
@@ -50,25 +50,12 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         return items;
     }
 
-    public void setShowCloudBadge(boolean show) {
-        this.showCloudBadge = show;
-    }
+    public void setShowCloudBadge(boolean show) { this.showCloudBadge = show; }
+    public void setShowLocalBadge(boolean show) { this.showLocalBadge = show; }
+    public void setCloudView(boolean isCloud) { this.isCloudView = isCloud; }
 
-    public void setShowLocalBadge(boolean show) {
-        this.showLocalBadge = show;
-    }
-
-    public void setCloudView(boolean isCloud) {
-        this.isCloudView = isCloud;
-    }
-
-    public void setOnItemClickListener(OnItemClickListener listener) {
-        this.clickListener = listener;
-    }
-
-    public void setOnItemLongClickListener(OnItemLongClickListener listener) {
-        this.longClickListener = listener;
-    }
+    public void setOnItemClickListener(OnItemClickListener listener) { this.clickListener = listener; }
+    public void setOnItemLongClickListener(OnItemLongClickListener listener) { this.longClickListener = listener; }
 
     @NonNull
     @Override
@@ -83,16 +70,31 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 云朵标记（本地视图）
+        // 选中状态：彩色边框
+        if (item.isSelected) {
+            holder.cardView.setCardBackgroundColor(context.getResources().getColor(android.R.color.holo_blue_light));
+            holder.cardView.setCardElevation(8f);
+        } else {
+            holder.cardView.setCardBackgroundColor(context.getResources().getColor(android.R.color.white));
+            holder.cardView.setCardElevation(2f);
+        }
+
+        // 云朵标记（透明背景彩色）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
+            holder.tvCloudBadge.setText("☁️");
+            holder.tvCloudBadge.setTextColor(context.getResources().getColor(android.R.color.holo_blue_dark));
+            holder.tvCloudBadge.setBackgroundColor(0x00000000); // 透明
         } else {
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记（云端视图）
+        // 手机标记（透明背景彩色）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
+            holder.tvLocalBadge.setText("📱");
+            holder.tvLocalBadge.setTextColor(context.getResources().getColor(android.R.color.holo_green_dark));
+            holder.tvLocalBadge.setBackgroundColor(0x00000000);
         } else {
             holder.tvLocalBadge.setVisibility(View.GONE);
         }
@@ -110,13 +112,14 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         // 加载缩略图
         if (isCloudView && item.remoteUrl != null) {
+            // 云端：尝试加载远程图片，失败显示文件类型图标
             Glide.with(context)
                     .load(item.remoteUrl)
                     .apply(new RequestOptions()
                             .centerCrop()
                             .override(300, 300)
-                            .placeholder(android.R.drawable.ic_menu_gallery)
-                            .error(android.R.drawable.ic_menu_gallery))
+                            .placeholder(getFileTypeIcon(item.name))
+                            .error(getFileTypeIcon(item.name)))
                     .into(holder.ivThumbnail);
         } else if (item.file != null && item.file.exists()) {
             if (item.isVideo) {
@@ -126,20 +129,23 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
                 if (bitmap != null) {
                     holder.ivThumbnail.setImageBitmap(bitmap);
                 } else {
-                    holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+                    holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
                 }
-            } else {
+            } else if (isImageFile(item.name)) {
                 Glide.with(context)
                         .load(item.file)
                         .apply(new RequestOptions()
                                 .centerCrop()
                                 .override(300, 300)
-                                .placeholder(android.R.drawable.ic_menu_gallery)
-                                .error(android.R.drawable.ic_menu_gallery))
+                                .placeholder(getFileTypeIcon(item.name))
+                                .error(getFileTypeIcon(item.name)))
                         .into(holder.ivThumbnail);
+            } else {
+                // 非图片/视频文件显示类型图标
+                holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
             }
         } else {
-            holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+            holder.ivThumbnail.setImageResource(getFileTypeIcon(item.name));
         }
 
         // 点击事件
@@ -165,6 +171,33 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         });
     }
 
+    private boolean isImageFile(String name) {
+        String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
+        return ext.matches("jpg|jpeg|png|gif|bmp|webp");
+    }
+
+    private int getFileTypeIcon(String name) {
+        String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
+        switch (ext) {
+            case "pdf": return android.R.drawable.ic_menu_agenda;
+            case "doc":
+            case "docx": return android.R.drawable.ic_menu_edit;
+            case "xls":
+            case "xlsx": return android.R.drawable.ic_menu_manage;
+            case "ppt":
+            case "pptx": return android.R.drawable.ic_menu_slideshow;
+            case "zip":
+            case "rar":
+            case "7z": return android.R.drawable.ic_menu_archive;
+            case "mp3":
+            case "wav":
+            case "flac": return android.R.drawable.ic_menu_my_calendar;
+            case "txt":
+            case "log": return android.R.drawable.ic_menu_info_details;
+            default: return android.R.drawable.ic_menu_gallery;
+        }
+    }
+
     @Override
     public int getItemCount() {
         return items.size();
@@ -174,6 +207,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         ImageView ivThumbnail, ivVideoBadge;
         TextView tvName, tvCloudBadge, tvLocalBadge;
         CheckBox cbSelect;
+        CardView cardView;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -183,6 +217,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             tvCloudBadge = itemView.findViewById(R.id.tv_cloud_badge);
             tvLocalBadge = itemView.findViewById(R.id.tv_local_badge);
             cbSelect = itemView.findViewById(R.id.cb_select);
+            cardView = itemView.findViewById(R.id.card_view);
         }
     }
 
