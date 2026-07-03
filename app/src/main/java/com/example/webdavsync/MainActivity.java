@@ -90,7 +90,6 @@ public class MainActivity extends AppCompatActivity {
             try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile))) {
                 writer.write(content);
             }
-            Toast.makeText(this, "Build info saved to Download/build_info.txt", Toast.LENGTH_SHORT).show();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -115,14 +114,9 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
-        // 点击选中（切换选择状态）
-        adapter.setOnItemClickListener((item, position) -> {
-            item.isSelected = !item.isSelected;
-            adapter.notifyItemChanged(position);
-            updateSelectedCount();
-        });
-
-        // ★ 移除长按监听，删除只能通过按钮触发
+        // 只保留点击事件
+        adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
+        // 移除长按监听
     }
 
     private void loadCurrentConnection() {
@@ -161,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
                     remoteFileNames.add(f);
                 }
             }
+            Log.d("MainActivity", "Remote files: " + remoteFileNames);
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
@@ -228,17 +223,13 @@ public class MainActivity extends AppCompatActivity {
             }
             startActivity(new Intent(this, CloudActivity.class));
         });
-
-        // ★ 删除按钮触发删除
         btnDeleteLocal.setOnClickListener(v -> deleteSelectedLocal());
-
-        // 调试按钮：强制显示云标记
         btnDebug.setOnClickListener(v -> {
             for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                 item.isOnCloud = true;
             }
             adapter.notifyDataSetChanged();
-            Toast.makeText(this, "已强制显示云标记", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "强制显示云标记", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -311,7 +302,6 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    // ★ 删除选中的本地文件
     private void deleteSelectedLocal() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
