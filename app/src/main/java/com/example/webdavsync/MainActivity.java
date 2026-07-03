@@ -43,7 +43,7 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView rvPhotos;
     private TextView tvConnectionStatus, tvPhotoCount, tvSelectedCount;
-    private Button btnSync, btnCloud, btnDeleteLocal;
+    private Button btnSync, btnCloud, btnDeleteLocal, btnDebug;
     private ImageView ivSettings;
     private EditText etRemoteDir;
 
@@ -57,6 +57,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        writeBuildInfo();
 
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
@@ -76,6 +78,24 @@ public class MainActivity extends AppCompatActivity {
         setupListeners();
     }
 
+    private void writeBuildInfo() {
+        try {
+            File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (!downloadDir.exists()) downloadDir.mkdirs();
+            File infoFile = new File(downloadDir, "build_info.txt");
+            String timestamp = BuildConfig.TIMESTAMP;
+            String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                    .format(new Date(Long.parseLong(timestamp)));
+            String content = "Build Timestamp: " + timestamp + "\nBuild Date: " + date + "\n";
+            try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile))) {
+                writer.write(content);
+            }
+            Toast.makeText(this, "Build info saved to Download/build_info.txt", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void initViews() {
         rvPhotos = findViewById(R.id.rv_photos);
         tvConnectionStatus = findViewById(R.id.tv_connection_status);
@@ -84,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
         btnSync = findViewById(R.id.btn_sync);
         btnCloud = findViewById(R.id.btn_cloud);
         btnDeleteLocal = findViewById(R.id.btn_delete_local);
+        btnDebug = findViewById(R.id.btn_debug);
         ivSettings = findViewById(R.id.iv_settings);
         etRemoteDir = findViewById(R.id.et_remote_dir);
     }
@@ -94,15 +115,16 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
-        // 点击选中（非长按）
+        // 点击选中
         adapter.setOnItemClickListener((item, position) -> {
-            item.isSelected = !item.isSelected;
-            adapter.notifyItemChanged(position);
+            // 切换选中状态（已在适配器内部处理）
             updateSelectedCount();
         });
 
-        // 长按事件取消，避免干扰
-        adapter.setOnItemLongClickListener(null);
+        // 长按不再触发删除
+        adapter.setOnItemLongClickListener((item, position) -> {
+            // 不做任何事
+        });
     }
 
     private void loadCurrentConnection() {
@@ -141,6 +163,7 @@ public class MainActivity extends AppCompatActivity {
                     remoteFileNames.add(f);
                 }
             }
+            android.util.Log.d("WebDAV", "Remote files: " + remoteFileNames);
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
@@ -209,6 +232,15 @@ public class MainActivity extends AppCompatActivity {
             startActivity(new Intent(this, CloudActivity.class));
         });
         btnDeleteLocal.setOnClickListener(v -> deleteSelectedLocal());
+
+        // ★ 调试按钮：强制显示云标记
+        btnDebug.setOnClickListener(v -> {
+            for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+                item.isOnCloud = true;
+            }
+            adapter.notifyDataSetChanged();
+            Toast.makeText(this, "已强制显示云标记", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void syncToCloud() {
