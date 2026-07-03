@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -66,22 +65,23 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
-        // ★ 点击事件：文件切换选中，目录进入
+        // 点击处理：进入子目录或选中文件
         adapter.setOnItemClickListener((item, position) -> {
             if (item.name.endsWith("/")) {
                 // 进入子目录
-                String name = item.name;
-                if (name.endsWith("/")) {
-                    name = name.substring(0, name.length() - 1);
-                }
-                String newPath = currentPath.isEmpty() ? name : currentPath + "/" + name;
-                Log.d("CloudActivity", "进入目录: " + newPath);
+                String newPath = currentPath.isEmpty() ? item.name.substring(0, item.name.length() - 1)
+                        : currentPath + "/" + item.name.substring(0, item.name.length() - 1);
                 loadDirectory(newPath);
             } else {
-                // 文件：切换选中状态（已在适配器内部切换，但我们需要更新计数）
+                // 切换选中状态
+                item.isSelected = !item.isSelected;
+                adapter.notifyItemChanged(position);
                 updateSelectedCount();
             }
         });
+
+        // 取消长按事件
+        adapter.setOnItemLongClickListener(null);
 
         loadDirectory("");
 
@@ -111,26 +111,12 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void collectLocalFiles() {
-        // 扫描 Download、DCIM、Pictures 目录，收集本地文件名
-        localFileNames.clear();
-        File[] dirs = {
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM),
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-        };
-        for (File dir : dirs) {
-            if (dir != null && dir.exists() && dir.isDirectory()) {
-                File[] files = dir.listFiles();
-                if (files != null) {
-                    for (File f : files) {
-                        if (f.isFile()) {
-                            localFileNames.add(f.getName());
-                        }
-                    }
-                }
+        File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        if (downloadDir != null && downloadDir.exists()) {
+            for (File f : downloadDir.listFiles()) {
+                if (f.isFile()) localFileNames.add(f.getName());
             }
         }
-        Log.d("CloudActivity", "本地文件数: " + localFileNames.size());
     }
 
     private void loadDirectory(String path) {
@@ -140,8 +126,6 @@ public class CloudActivity extends AppCompatActivity {
 
         new Thread(() -> {
             List<String> items = client.listDirectory(currentPath);
-            // 打印返回的条目，调试用
-            Log.d("CloudActivity", "listDirectory(" + currentPath + ") returned: " + items);
             mainHandler.post(() -> {
                 List<PhotoAdapter.PhotoItem> list = new ArrayList<>();
 
@@ -161,17 +145,13 @@ public class CloudActivity extends AppCompatActivity {
                             fi.name = item;
                             fi.displayName = item;
                             fi.isOnCloud = true;
-                            // 判断是否为目录：以 / 结尾
-                            boolean isDir = item.endsWith("/");
-                            if (!isDir) {
-                                // 文件：检查本地是否存在
-                                fi.isOnLocal = localFileNames.contains(item);
+                            fi.isOnLocal = !item.endsWith("/") && localFileNames.contains(item);
+                            if (!item.endsWith("/")) {
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
                                 fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                                 String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
                                 fi.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
                             } else {
-                                fi.isOnLocal = false;
                                 fi.remoteUrl = null;
                                 fi.isVideo = false;
                             }
@@ -240,7 +220,6 @@ public class CloudActivity extends AppCompatActivity {
                 btnDownload.setEnabled(true);
                 tvCloudCount.setText("下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
                 Toast.makeText(CloudActivity.this, "下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail, Toast.LENGTH_LONG).show();
-                // 清除选中
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) item.isSelected = false;
                 adapter.notifyDataSetChanged();
                 updateSelectedCount();
