@@ -1,19 +1,29 @@
 package com.example.webdavsync;
 
-import android.content.Context;
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ListView;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,24 +31,18 @@ import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String PREFS_NAME = "webdav_configs";
-    private static final String KEY_CONFIG_NAMES = "config_names";
+    private static final int REQUEST_PERMISSIONS = 100;
 
-    private EditText etConfigName, etServerUrl, etUsername, etPassword;
-    private Button btnSaveConfig, btnDeleteConfig, btnConnect, btnCloudBrowse, btnLocalBrowse;
-    private ListView lvConfigs;
-    private TextView tvConnectionStatus;
+    private RecyclerView rvPhotos;
+    private TextView tvConnectionStatus, tvPhotoCount, tvSelectedCount;
+    private Button btnSync, btnCloud;
+    private ImageView ivSettings;
 
-    private ArrayAdapter<String> configAdapter;
-    private List<String> configNames = new ArrayList<>();
+    private PhotoAdapter adapter;
+    private WebDAVClient webdavClient;
     private SharedPreferences prefs;
-    private String selectedConfigName = null;
-    private WebDAVClient currentClient = null;
-    private String currentServerUrl = "";
-    private String currentUsername = "";
-    private String currentPassword = "";
-
     private Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Set<String> remoteFileNames = new HashSet<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,188 +50,235 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         initViews();
-        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        loadConfigNames();
+        prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
+
+        // 请求权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            String[] perms = {
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+            };
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, perms, REQUEST_PERMISSIONS);
+                return;
+            }
+        }
+
+        setupRecyclerView();
+        loadSettings();
+        loadLocalPhotos();
         setupListeners();
-        updateConnectionStatus(false);
     }
 
     private void initViews() {
-        etConfigName = findViewById(R.id.et_config_name);
-        etServerUrl = findViewById(R.id.et_server_url);
-        etUsername = findViewById(R.id.et_username);
-        etPassword = findViewById(R.id.et_password);
-        btnSaveConfig = findViewById(R.id.btn_save_config);
-        btnDeleteConfig = findViewById(R.id.btn_delete_config);
-        btnConnect = findViewById(R.id.btn_connect);
-        btnCloudBrowse = findViewById(R.id.btn_cloud_browse);
-        btnLocalBrowse = findViewById(R.id.btn_local_browse);
-        lvConfigs = findViewById(R.id.lv_configs);
+        rvPhotos = findViewById(R.id.rv_photos);
         tvConnectionStatus = findViewById(R.id.tv_connection_status);
+        tvPhotoCount = findViewById(R.id.tv_photo_count);
+        tvSelectedCount = findViewById(R.id.tv_selected_count);
+        btnSync = findViewById(R.id.btn_sync);
+        btnCloud = findViewById(R.id.btn_cloud);
+        ivSettings = findViewById(R.id.iv_settings);
     }
 
-    private void loadConfigNames() {
-        configNames.clear();
-        Set<String> nameSet = prefs.getStringSet(KEY_CONFIG_NAMES, new HashSet<>());
-        configNames.addAll(nameSet);
-        if (configAdapter == null) {
-            configAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_single_choice, configNames);
-            lvConfigs.setAdapter(configAdapter);
-            lvConfigs.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
+    private void setupRecyclerView() {
+        rvPhotos.setLayoutManager(new GridLayoutManager(this, 3));
+        adapter = new PhotoAdapter(this);
+        adapter.setShowCloudBadge(true);
+        rvPhotos.setAdapter(adapter);
+
+        adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
+    }
+
+    private void loadSettings() {
+        String server = prefs.getString("server_url", "");
+        String username = prefs.getString("username", "");
+        String password = prefs.getString("password", "");
+
+        if (!server.isEmpty() && !username.isEmpty()) {
+            webdavClient = new WebDAVClient(server, username, password);
+            tvConnectionStatus.setText("🔗 " + server);
+            // 后台测试连接
+            new Thread(() -> {
+                boolean ok = webdavClient.testConnection();
+                mainHandler.post(() -> {
+                    if (ok) {
+                        tvConnectionStatus.setText("✅ 已连接: " + server);
+                        loadRemoteFileList();
+                    } else {
+                        tvConnectionStatus.setText("⚠️ 连接失败: " + server);
+                    }
+                });
+            }).start();
         } else {
-            configAdapter.notifyDataSetChanged();
+            tvConnectionStatus.setText("⚪ 未配置连接");
         }
+    }
+
+    private void loadRemoteFileList() {
+        new Thread(() -> {
+            List<String> files = webdavClient.listDirectory("");
+            remoteFileNames.clear();
+            for (String f : files) {
+                if (!f.endsWith("/")) {
+                    remoteFileNames.add(f);
+                }
+            }
+            mainHandler.post(() -> {
+                // 更新云端标记
+                for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+                    item.isOnCloud = remoteFileNames.contains(item.name);
+                }
+                adapter.notifyDataSetChanged();
+            });
+        }).start();
+    }
+
+    private void loadLocalPhotos() {
+        tvPhotoCount.setText("加载中...");
+
+        new Thread(() -> {
+            List<PhotoAdapter.PhotoItem> items = new ArrayList<>();
+
+            // 使用 MediaStore 查询照片
+            String[] projection = {
+                    MediaStore.Images.Media.DATA,
+                    MediaStore.Images.Media.DISPLAY_NAME,
+                    MediaStore.Images.Media.DATE_MODIFIED
+            };
+            Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+            Cursor cursor = getContentResolver().query(uri, projection, null, null,
+                    MediaStore.Images.Media.DATE_MODIFIED + " DESC");
+
+            if (cursor != null) {
+                int dataIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
+                int nameIndex = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
+                int dateIndex = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED);
+
+                while (cursor.moveToNext()) {
+                    String path = cursor.getString(dataIndex);
+                    String name = cursor.getString(nameIndex);
+                    long date = cursor.getLong(dateIndex);
+
+                    if (path != null) {
+                        File file = new File(path);
+                        if (file.exists()) {
+                            PhotoAdapter.PhotoItem item = new PhotoAdapter.PhotoItem(name);
+                            item.file = file;
+                            item.dateModified = date;
+                            item.isOnCloud = remoteFileNames.contains(name);
+                            // 判断是否为视频（通过路径或扩展名）
+                            String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
+                            item.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
+                            items.add(item);
+                        }
+                    }
+                }
+                cursor.close();
+            }
+
+            final List<PhotoAdapter.PhotoItem> finalItems = items;
+            mainHandler.post(() -> {
+                adapter.setItems(finalItems);
+                tvPhotoCount.setText(finalItems.size() + " 张照片");
+                updateSelectedCount();
+            });
+        }).start();
+    }
+
+    private void updateSelectedCount() {
+        int count = 0;
+        for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+            if (item.isSelected) count++;
+        }
+        tvSelectedCount.setText("已选择 " + count + " 项");
     }
 
     private void setupListeners() {
-        // 保存配置时先测试连接
-        btnSaveConfig.setOnClickListener(v -> {
-            String name = etConfigName.getText().toString().trim();
-            String server = etServerUrl.getText().toString().trim();
-            String user = etUsername.getText().toString().trim();
-            String pass = etPassword.getText().toString().trim();
-
-            if (name.isEmpty() || server.isEmpty()) {
-                Toast.makeText(this, "配置名称和服务器地址不能为空", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Toast.makeText(this, "测试连接中...", Toast.LENGTH_SHORT).show();
-            WebDAVClient testClient = new WebDAVClient(server, user, pass);
-            new Thread(() -> {
-                boolean success = testClient.testConnection();
-                mainHandler.post(() -> {
-                    if (success) {
-                        SharedPreferences.Editor editor = prefs.edit();
-                        editor.putString("config_" + name + "_server", server);
-                        editor.putString("config_" + name + "_username", user);
-                        editor.putString("config_" + name + "_password", pass);
-                        Set<String> nameSet = prefs.getStringSet(KEY_CONFIG_NAMES, new HashSet<>());
-                        nameSet.add(name);
-                        editor.putStringSet(KEY_CONFIG_NAMES, nameSet);
-                        editor.apply();
-                        loadConfigNames();
-                        Toast.makeText(MainActivity.this, "配置已保存: " + name, Toast.LENGTH_LONG).show();
-                        clearForm();
-                    } else {
-                        Toast.makeText(MainActivity.this, "连接失败，无法保存配置", Toast.LENGTH_LONG).show();
-                    }
-                });
-            }).start();
+        ivSettings.setOnClickListener(v -> {
+            startActivity(new Intent(this, SettingsActivity.class));
         });
 
-        btnDeleteConfig.setOnClickListener(v -> {
-            if (selectedConfigName == null) {
-                Toast.makeText(this, "请先选择要删除的配置", Toast.LENGTH_SHORT).show();
+        btnSync.setOnClickListener(v -> syncToCloud());
+
+        btnCloud.setOnClickListener(v -> {
+            if (webdavClient == null) {
+                Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
                 return;
             }
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.remove("config_" + selectedConfigName + "_server");
-            editor.remove("config_" + selectedConfigName + "_username");
-            editor.remove("config_" + selectedConfigName + "_password");
-            Set<String> nameSet = prefs.getStringSet(KEY_CONFIG_NAMES, new HashSet<>());
-            nameSet.remove(selectedConfigName);
-            editor.putStringSet(KEY_CONFIG_NAMES, nameSet);
-            editor.apply();
-
-            if (currentClient != null && selectedConfigName.equals(getCurrentConfigName())) {
-                currentClient = null;
-                updateConnectionStatus(false);
-            }
-            loadConfigNames();
-            selectedConfigName = null;
-            clearForm();
-            Toast.makeText(this, "配置已删除", Toast.LENGTH_SHORT).show();
-        });
-
-        lvConfigs.setOnItemClickListener((parent, view, position, id) -> {
-            selectedConfigName = configNames.get(position);
-            loadConfigToForm(selectedConfigName);
-        });
-
-        btnConnect.setOnClickListener(v -> {
-            if (selectedConfigName == null) {
-                Toast.makeText(this, "请先选择配置", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            String server = prefs.getString("config_" + selectedConfigName + "_server", "");
-            String user = prefs.getString("config_" + selectedConfigName + "_username", "");
-            String pass = prefs.getString("config_" + selectedConfigName + "_password", "");
-            if (server.isEmpty()) {
-                Toast.makeText(this, "配置不完整，请重新保存", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            Toast.makeText(this, "正在连接...", Toast.LENGTH_SHORT).show();
-            new Thread(() -> {
-                WebDAVClient client = new WebDAVClient(server, user, pass);
-                boolean ok = client.testConnection();
-                mainHandler.post(() -> {
-                    if (ok) {
-                        currentClient = client;
-                        currentServerUrl = server;
-                        currentUsername = user;
-                        currentPassword = pass;
-                        WebDAVClientHolder.setClient(client);
-                        updateConnectionStatus(true);
-                        Toast.makeText(MainActivity.this, "连接成功: " + selectedConfigName, Toast.LENGTH_LONG).show();
-                    } else {
-                        currentClient = null;
-                        WebDAVClientHolder.setClient(null);
-                        updateConnectionStatus(false);
-                        Toast.makeText(MainActivity.this, "连接失败，请检查配置", Toast.LENGTH_LONG).show();
-                    }
-                });
-            }).start();
-        });
-
-        btnCloudBrowse.setOnClickListener(v -> {
-            if (currentClient == null) {
-                Toast.makeText(this, "请先连接", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            startActivity(new Intent(this, CloudBrowseActivity.class));
-        });
-
-        btnLocalBrowse.setOnClickListener(v -> {
-            startActivity(new Intent(this, LocalBrowseActivity.class));
+            startActivity(new Intent(this, CloudActivity.class));
         });
     }
 
-    private String getCurrentConfigName() {
-        for (String name : configNames) {
-            String server = prefs.getString("config_" + name + "_server", "");
-            if (server.equals(currentServerUrl)) {
-                return name;
+    private void syncToCloud() {
+        List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
+        for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+            if (item.isSelected && item.file != null && item.file.exists()) {
+                selected.add(item);
             }
         }
-        return null;
-    }
 
-    private void loadConfigToForm(String name) {
-        String server = prefs.getString("config_" + name + "_server", "");
-        String user = prefs.getString("config_" + name + "_username", "");
-        String pass = prefs.getString("config_" + name + "_password", "");
-        etConfigName.setText(name);
-        etServerUrl.setText(server);
-        etUsername.setText(user);
-        etPassword.setText(pass);
-    }
-
-    private void clearForm() {
-        etConfigName.setText("");
-        etServerUrl.setText("");
-        etUsername.setText("");
-        etPassword.setText("");
-    }
-
-    private void updateConnectionStatus(boolean connected) {
-        if (connected && currentClient != null) {
-            tvConnectionStatus.setText("✅ 已连接: " + selectedConfigName + " (" + currentServerUrl + ")");
-            btnCloudBrowse.setEnabled(true);
-        } else {
-            tvConnectionStatus.setText("❌ 未连接");
-            btnCloudBrowse.setEnabled(false);
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "请先选择照片", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        if (webdavClient == null) {
+            Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(this, "开始同步 " + selected.size() + " 张照片", Toast.LENGTH_SHORT).show();
+        btnSync.setEnabled(false);
+
+        new Thread(() -> {
+            int success = 0, fail = 0;
+            for (PhotoAdapter.PhotoItem item : selected) {
+                boolean ok = webdavClient.uploadFile("", item.file);
+                if (ok) {
+                    success++;
+                    item.isOnCloud = true;
+                } else {
+                    fail++;
+                }
+            }
+
+            final int finalSuccess = success;
+            final int finalFail = fail;
+            mainHandler.post(() -> {
+                btnSync.setEnabled(true);
+                Toast.makeText(MainActivity.this,
+                        "同步完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
+                        Toast.LENGTH_LONG).show();
+                // 清除选中状态
+                for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
+                    item.isSelected = false;
+                }
+                adapter.notifyDataSetChanged();
+                updateSelectedCount();
+                // 重新加载远程文件列表
+                loadRemoteFileList();
+            });
+        }).start();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_PERMISSIONS) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                loadLocalPhotos();
+            } else {
+                Toast.makeText(this, "需要存储权限才能访问相册", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 从设置返回后重新加载配置
+        loadSettings();
     }
 }
