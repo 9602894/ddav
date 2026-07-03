@@ -25,6 +25,14 @@
                 android:scaleType="centerCrop"
                 android:src="@android:drawable/ic_menu_gallery" />
 
+            <!-- 选中覆盖层（半透明蓝色） -->
+            <View
+                android:id="@+id/v_selected_overlay"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#884FC3F7"
+                android:visibility="gone" />
+
             <ImageView
                 android:id="@+id/iv_video_badge"
                 android:layout_width="28dp"
@@ -37,6 +45,7 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
+            <!-- 云朵标记 -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -51,6 +60,7 @@
                 android:background="@android:color/transparent"
                 android:visibility="gone" />
 
+            <!-- 手机标记 -->
             <TextView
                 android:id="@+id/tv_local_badge"
                 android:layout_width="wrap_content"
