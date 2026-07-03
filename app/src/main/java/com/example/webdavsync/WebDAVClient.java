@@ -51,9 +51,7 @@ public class WebDAVClient {
     }
 
     public static OkHttpClient getOkHttpClient() {
-        if (okHttpClient == null) {
-            okHttpClient = buildOkHttpClient("", "");
-        }
+        if (okHttpClient == null) okHttpClient = buildOkHttpClient("", "");
         return okHttpClient;
     }
 
@@ -103,9 +101,9 @@ public class WebDAVClient {
                     if (lastSlash > 0) {
                         String parent = cleanPath.substring(0, lastSlash);
                         if (createDirectory(parent)) {
-                            Request retryRequest = authRequest().url(url).method("MKCOL", null).build();
-                            try (Response retry = client.newCall(retryRequest).execute()) {
-                                return retry.isSuccessful();
+                            Request retry = authRequest().url(url).method("MKCOL", null).build();
+                            try (Response retryResp = client.newCall(retry).execute()) {
+                                return retryResp.isSuccessful();
                             }
                         }
                     }
@@ -139,6 +137,7 @@ public class WebDAVClient {
                     return entries;
                 }
                 String body = response.body().string();
+                // 提取 href
                 Pattern pattern = Pattern.compile("<[a-zA-Z0-9:]*href>([^<]+)</[a-zA-Z0-9:]*href>");
                 Matcher matcher = pattern.matcher(body);
                 boolean found = false;
@@ -147,7 +146,10 @@ public class WebDAVClient {
                     if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
                     String relative = href.replace(serverUrl + "/", "");
                     if (!relative.isEmpty()) {
-                        if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
+                        // 如果相对路径以 / 结尾，保持原样；否则如果它不包含 '.'，则添加 / 表示目录
+                        if (!relative.endsWith("/") && !relative.contains(".")) {
+                            relative += "/";
+                        }
                         entries.add(relative);
                         found = true;
                     }
@@ -160,7 +162,9 @@ public class WebDAVClient {
                         if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
                         String relative = href.replace(serverUrl + "/", "");
                         if (!relative.isEmpty()) {
-                            if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
+                            if (!relative.endsWith("/") && !relative.contains(".")) {
+                                relative += "/";
+                            }
                             entries.add(relative);
                             found = true;
                         }
