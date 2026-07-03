@@ -6,6 +6,11 @@ android {
     namespace 'com.example.webdavsync'
     compileSdk 34
 
+    // ★ 启用 BuildConfig 功能（允许自定义字段）
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId 'com.example.webdavsync'
         minSdk 21
