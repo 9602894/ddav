@@ -88,7 +88,6 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
-        // ★ Pho 风格：点击切换选中
         adapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             adapter.notifyItemChanged(position);
