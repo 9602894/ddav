@@ -65,10 +65,10 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
-        // ★ 点击事件：如果是目录则进入，否则切换选中
+        // ★ 点击切换选中 + 进入目录
         adapter.setOnItemClickListener((item, position) -> {
             if (item.name.endsWith("/")) {
-                // 进入子目录
+                // 进入子目录（移除末尾的 /）
                 String subPath = item.name.substring(0, item.name.length() - 1);
                 String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
                 loadDirectory(newPath);
@@ -80,9 +80,9 @@ public class CloudActivity extends AppCompatActivity {
             }
         });
 
-        // 长按不再触发删除（保留空实现）
+        // 长按删除（可选，但我们使用按钮）
         adapter.setOnItemLongClickListener((item, position) -> {
-            // 不做任何事
+            // 不处理
         });
 
         loadDirectory("");
