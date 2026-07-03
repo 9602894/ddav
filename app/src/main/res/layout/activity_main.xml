@@ -6,7 +6,6 @@
     android:orientation="vertical"
     android:background="#f5f5f5">
 
-    <!-- 顶部工具栏 -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -35,7 +34,6 @@
 
     </androidx.appcompat.widget.Toolbar>
 
-    <!-- 状态栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -62,7 +60,6 @@
             android:textColor="#888888" />
     </LinearLayout>
 
-    <!-- 远程目录输入框 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -89,7 +86,6 @@
             android:background="@android:drawable/editbox_background" />
     </LinearLayout>
 
-    <!-- 照片网格 -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_photos"
         android:layout_width="match_parent"
@@ -99,7 +95,6 @@
         android:clipToPadding="false"
         android:background="#f5f5f5" />
 
-    <!-- 底部操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="56dp"
@@ -120,6 +115,17 @@
             android:textColor="#333333" />
 
         <Button
+            android:id="@+id/btn_debug"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="调试"
+            android:backgroundTint="#FF5722"
+            android:textColor="#ffffff"
+            android:textSize="12sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
+
+        <Button
             android:id="@+id/btn_delete_local"
             android:layout_width="wrap_content"
             android:layout_height="36dp"
@@ -128,7 +134,8 @@
             android:textColor="#ffffff"
             android:textSize="12sp"
             android:paddingStart="12dp"
-            android:paddingEnd="12dp" />
+            android:paddingEnd="12dp"
+            android:layout_marginStart="4dp" />
 
         <Button
             android:id="@+id/btn_sync"
@@ -140,7 +147,7 @@
             android:textSize="12sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="4dp" />
 
         <Button
             android:id="@+id/btn_cloud"
@@ -152,7 +159,7 @@
             android:textSize="12sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:layout_marginStart="8dp" />
+            android:layout_marginStart="4dp" />
 
     </LinearLayout>
 
