@@ -37,7 +37,7 @@
                 android:background="#88000000"
                 android:padding="4dp" />
 
-            <!-- 云朵标记 -->
+            <!-- ★ 云朵标记（半透明背景） -->
             <TextView
                 android:id="@+id/tv_cloud_badge"
                 android:layout_width="wrap_content"
@@ -45,14 +45,14 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_alignStart="@+id/iv_thumbnail"
                 android:layout_margin="6dp"
-                android:padding="2dp"
+                android:padding="6dp 8dp"
                 android:text="☁️"
-                android:textSize="24sp"
-                android:textColor="@android:color/holo_blue_dark"
-                android:background="@android:color/transparent"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="#801E88E5"
                 android:visibility="gone" />
 
-            <!-- 手机标记 -->
+            <!-- ★ 手机标记（半透明背景） -->
             <TextView
                 android:id="@+id/tv_local_badge"
                 android:layout_width="wrap_content"
@@ -60,11 +60,11 @@
                 android:layout_alignTop="@+id/iv_thumbnail"
                 android:layout_toEndOf="@+id/tv_cloud_badge"
                 android:layout_margin="6dp"
-                android:padding="2dp"
+                android:padding="6dp 8dp"
                 android:text="📱"
-                android:textSize="24sp"
-                android:textColor="@android:color/holo_green_dark"
-                android:background="@android:color/transparent"
+                android:textSize="18sp"
+                android:textColor="#FFFFFF"
+                android:background="#8043A047"
                 android:visibility="gone" />
 
             <TextView
