@@ -65,29 +65,26 @@ public class CloudActivity extends AppCompatActivity {
         adapter.setShowLocalBadge(true);
         rvCloud.setAdapter(adapter);
 
+        // ★ 点击：目录则进入，文件则切换选中状态
         adapter.setOnItemClickListener((item, position) -> {
-            // 判断是否为目录（支持不以 / 结尾，通过 listDirectory 返回的条目可能不带 /）
-            // 我们通过检查 item.name 是否以 '/' 结尾，或者检查是否没有扩展名（简单判断）
-            boolean isDirectory = item.name.endsWith("/") || !item.name.contains(".");
-            if (isDirectory) {
-                String dirName = item.name.endsWith("/") ? item.name.substring(0, item.name.length() - 1) : item.name;
-                String newPath = currentPath.isEmpty() ? dirName : currentPath + "/" + dirName;
+            if (item.name.endsWith("/")) {
+                // 进入子目录
+                String newPath = currentPath.isEmpty() ? item.name.substring(0, item.name.length() - 1)
+                        : currentPath + "/" + item.name.substring(0, item.name.length() - 1);
                 loadDirectory(newPath);
             } else {
+                // 切换选中状态
                 item.isSelected = !item.isSelected;
                 adapter.notifyItemChanged(position);
                 updateSelectedCount();
             }
         });
 
-        adapter.setOnItemLongClickListener((item, position) -> {
-            if (!item.name.endsWith("/") && item.name.contains(".")) {
-                showDeleteDialog(item, position);
-            }
-        });
+        // ★ 移除长按监听，删除仅由按钮触发
 
         loadDirectory("");
 
+        // ★ 点击路径返回根目录
         tvCloudPath.setOnClickListener(v -> {
             if (!currentPath.isEmpty()) {
                 loadDirectory("");
@@ -109,6 +106,8 @@ public class CloudActivity extends AppCompatActivity {
         });
 
         btnDownload.setOnClickListener(v -> downloadSelected());
+
+        // ★ 删除按钮触发删除
         btnDeleteCloud.setOnClickListener(v -> deleteSelected());
     }
 
@@ -147,10 +146,8 @@ public class CloudActivity extends AppCompatActivity {
                             fi.name = item;
                             fi.displayName = item;
                             fi.isOnCloud = true;
-                            // 判断是否为目录（以 / 结尾或无扩展名）
-                            boolean isDir = item.endsWith("/") || !item.contains(".");
-                            fi.isOnLocal = !isDir && localFileNames.contains(item);
-                            if (!isDir) {
+                            fi.isOnLocal = !item.endsWith("/") && localFileNames.contains(item);
+                            if (!item.endsWith("/")) {
                                 String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
                                 fi.remoteUrl = client.getServerUrl() + "/" + remotePath;
                                 String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
@@ -186,7 +183,7 @@ public class CloudActivity extends AppCompatActivity {
     private void downloadSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
+            if (item.isSelected && !item.name.endsWith("/")) {
                 selected.add(item);
             }
         }
@@ -233,10 +230,11 @@ public class CloudActivity extends AppCompatActivity {
         }).start();
     }
 
+    // ★ 删除选中的云端文件
     private void deleteSelected() {
         List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
         for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
-            if (item.isSelected && !item.name.endsWith("/") && item.name.contains(".")) {
+            if (item.isSelected && !item.name.endsWith("/")) {
                 selected.add(item);
             }
         }
@@ -263,32 +261,6 @@ public class CloudActivity extends AppCompatActivity {
                             tvCloudCount.setText("删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
                             Toast.makeText(CloudActivity.this, "删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail, Toast.LENGTH_LONG).show();
                             loadDirectory(currentPath);
-                        });
-                    }).start();
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void showDeleteDialog(PhotoAdapter.PhotoItem item, int position) {
-        if (item.name.endsWith("/") || !item.name.contains(".")) {
-            Toast.makeText(this, "不能删除目录", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        new AlertDialog.Builder(this)
-                .setTitle("删除文件")
-                .setMessage("确定要删除 \"" + item.name + "\" 吗？")
-                .setPositiveButton("删除", (dialog, which) -> {
-                    String remotePath = currentPath.isEmpty() ? item.name : currentPath + "/" + item.name;
-                    new Thread(() -> {
-                        boolean ok = client.deleteFile(remotePath);
-                        mainHandler.post(() -> {
-                            if (ok) {
-                                Toast.makeText(CloudActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
-                                loadDirectory(currentPath);
-                            } else {
-                                Toast.makeText(CloudActivity.this, "删除失败", Toast.LENGTH_SHORT).show();
-                            }
                         });
                     }).start();
                 })
