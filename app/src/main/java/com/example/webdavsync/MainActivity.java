@@ -13,7 +13,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -27,20 +26,13 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "MainActivity";
     private static final int REQUEST_PERMISSIONS = 100;
 
     private RecyclerView rvPhotos;
@@ -60,8 +52,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // ★ 写入构建时间戳，并记录详细日志
-        writeBuildInfo();
+        // ★ 显示简单的 Toast 确认版本（不再写入文件）
+        Toast.makeText(this, "版本: 2026-07-03 强制测试", Toast.LENGTH_LONG).show();
 
         initViews();
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
@@ -79,27 +71,6 @@ public class MainActivity extends AppCompatActivity {
         loadCurrentConnection();
         loadLocalPhotos();
         setupListeners();
-    }
-
-    private void writeBuildInfo() {
-        try {
-            File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            if (!downloadDir.exists()) downloadDir.mkdirs();
-            File infoFile = new File(downloadDir, "build_info.txt");
-            String timestamp = BuildConfig.TIMESTAMP;
-            String date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                    .format(new Date(Long.parseLong(timestamp)));
-            String content = "Build Timestamp: " + timestamp + "\n"
-                           + "Build Date: " + date + "\n"
-                           + "Version: " + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")\n";
-            try (Writer writer = new OutputStreamWriter(new FileOutputStream(infoFile))) {
-                writer.write(content);
-            }
-            Log.d(TAG, "Build info written to: " + infoFile.getAbsolutePath());
-            Toast.makeText(this, "构建信息已写入 Download/build_info.txt", Toast.LENGTH_SHORT).show();
-        } catch (Exception e) {
-            Log.e(TAG, "写入构建信息失败", e);
-        }
     }
 
     private void initViews() {
@@ -120,13 +91,8 @@ public class MainActivity extends AppCompatActivity {
         adapter.setShowCloudBadge(true);
         rvPhotos.setAdapter(adapter);
 
-        adapter.setOnItemClickListener((item, position) -> {
-            Log.d(TAG, "点击: " + item.name + ", isSelected=" + item.isSelected);
-            updateSelectedCount();
-        });
-
+        adapter.setOnItemClickListener((item, position) -> updateSelectedCount());
         adapter.setOnItemLongClickListener((item, position) -> {
-            Log.d(TAG, "长按: " + item.name);
             showDeleteLocalDialog(item, position);
         });
     }
@@ -167,11 +133,9 @@ public class MainActivity extends AppCompatActivity {
                     remoteFileNames.add(f);
                 }
             }
-            Log.d(TAG, "远程文件列表: " + remoteFileNames.toString());
             mainHandler.post(() -> {
                 for (PhotoAdapter.PhotoItem item : adapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
-                    Log.d(TAG, "本地文件: " + item.name + ", 是否在云端: " + item.isOnCloud);
                 }
                 adapter.notifyDataSetChanged();
             });
@@ -224,7 +188,6 @@ public class MainActivity extends AppCompatActivity {
             if (item.isSelected) count++;
         }
         tvSelectedCount.setText("已选择 " + count + " 项");
-        Log.d(TAG, "选中数量: " + count);
     }
 
     private void setupListeners() {
