@@ -45,7 +45,6 @@ public class CloudBrowseActivity extends AppCompatActivity {
             return;
         }
 
-        // 3列网格
         rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
         adapter = new FileAdapter(this, false);
         rvCloud.setAdapter(adapter);
@@ -144,7 +143,6 @@ public class CloudBrowseActivity extends AppCompatActivity {
                 if (!downloadDir.exists()) downloadDir.mkdirs();
 
                 File destFile = new File(downloadDir, fi.name);
-                // 处理重名
                 int count = 1;
                 String name = fi.name;
                 String ext = "";
@@ -167,7 +165,6 @@ public class CloudBrowseActivity extends AppCompatActivity {
                 Toast.makeText(CloudBrowseActivity.this,
                         "下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail,
                         Toast.LENGTH_LONG).show();
-                // 清除选中状态
                 for (FileAdapter.FileItem fi : adapter.getItems()) fi.isSelected = false;
                 adapter.notifyDataSetChanged();
                 updateSelectedCount();
