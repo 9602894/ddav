@@ -75,6 +75,7 @@ public class CloudActivity extends AppCompatActivity {
             rvCloud.setAdapter(photoAdapter);
             photoAdapter.setOnItemClickListener((item, position) -> {
                 if (item.name.endsWith("/")) {
+                    // ★ 进入子目录
                     String subPath = item.name.substring(0, item.name.length() - 1);
                     String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
                     loadDirectory(newPath);
@@ -104,6 +105,7 @@ public class CloudActivity extends AppCompatActivity {
 
         loadDirectory("");
 
+        // ★ 点击路径返回根目录
         tvCloudPath.setOnClickListener(v -> {
             if (!currentPath.isEmpty()) {
                 loadDirectory("");
