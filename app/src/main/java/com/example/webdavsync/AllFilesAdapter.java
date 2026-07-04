@@ -27,8 +27,12 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
     public interface OnItemClickListener {
         void onItemClick(FileItem item, int position);
     }
+    public interface OnItemLongClickListener {
+        void onItemLongClick(FileItem item, int position);
+    }
 
     private OnItemClickListener clickListener;
+    private OnItemLongClickListener longClickListener;
 
     public AllFilesAdapter(Context context) {
         this.context = context;
@@ -38,18 +42,14 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
         this.items = list;
         notifyDataSetChanged();
     }
-
-    public List<FileItem> getItems() {
-        return items;
-    }
+    public List<FileItem> getItems() { return items; }
 
     public void setShowCloudBadge(boolean show) { this.showCloudBadge = show; }
     public void setShowLocalBadge(boolean show) { this.showLocalBadge = show; }
     public void setCloudView(boolean isCloud) { this.isCloudView = isCloud; }
 
-    public void setOnItemClickListener(OnItemClickListener listener) {
-        this.clickListener = listener;
-    }
+    public void setOnItemClickListener(OnItemClickListener listener) { this.clickListener = listener; }
+    public void setOnItemLongClickListener(OnItemLongClickListener listener) { this.longClickListener = listener; }
 
     @NonNull
     @Override
@@ -119,6 +119,14 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
+        holder.itemView.setOnLongClickListener(v -> {
+            if (longClickListener != null) {
+                longClickListener.onItemLongClick(item, position);
+                return true;
+            }
+            return false;
+        });
+
         holder.cbSelect.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
@@ -154,9 +162,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
     }
 
     @Override
-    public int getItemCount() {
-        return items.size();
-    }
+    public int getItemCount() { return items.size(); }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivThumbnail, ivVideoBadge;
