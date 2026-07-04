@@ -1,6 +1,7 @@
 package com.example.webdavsync;
 
 import okhttp3.*;
+import okhttp3.Credentials;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -20,6 +21,7 @@ public class WebDAVClient {
     private static OkHttpClient okHttpClient;
 
     public WebDAVClient(String serverUrl, String username, String password) {
+        // 确保 serverUrl 不以 / 结尾
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
         this.username = username == null ? "" : username;
         this.password = password == null ? "" : password;
@@ -30,6 +32,7 @@ public class WebDAVClient {
         updateOkHttpClient(this.username, this.password);
     }
 
+    public String getServerUrl() { return serverUrl; }
     public String getUsername() { return username; }
     public String getPassword() { return password; }
 
@@ -59,8 +62,6 @@ public class WebDAVClient {
         okHttpClient = buildOkHttpClient(username, password);
     }
 
-    public String getServerUrl() { return serverUrl; }
-
     private Request.Builder authRequest() {
         Request.Builder builder = new Request.Builder();
         if (!username.isEmpty() && !password.isEmpty()) {
@@ -70,6 +71,7 @@ public class WebDAVClient {
         return builder;
     }
 
+    // 测试连接
     public boolean testConnection() {
         try {
             Request request = authRequest()
@@ -86,6 +88,7 @@ public class WebDAVClient {
         }
     }
 
+    // 创建目录（递归）
     public boolean createDirectory(String path) {
         if (path == null || path.isEmpty()) return true;
         try {
@@ -116,7 +119,7 @@ public class WebDAVClient {
         }
     }
 
-    // ★ 修复 listDirectory：正确标记目录（以 / 结尾）
+    // 列出目录内容（返回文件名列表，目录以 / 结尾）
     public List<String> listDirectory(String path) {
         List<String> entries = new ArrayList<>();
         try {
@@ -147,7 +150,7 @@ public class WebDAVClient {
                     if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
                     String relative = href.replace(serverUrl + "/", "");
                     if (!relative.isEmpty()) {
-                        // ★ 关键修复：如果 href 以 / 结尾，标记为目录
+                        // ★ 确保目录以 / 结尾
                         if (href.endsWith("/") && !relative.endsWith("/")) {
                             relative += "/";
                         }
@@ -156,6 +159,7 @@ public class WebDAVClient {
                     }
                 }
                 if (!found) {
+                    // 备用解析（标准 href）
                     Pattern pattern2 = Pattern.compile("<href>([^<]+)</href>");
                     Matcher matcher2 = pattern2.matcher(body);
                     while (matcher2.find()) {
@@ -185,6 +189,7 @@ public class WebDAVClient {
         return entries;
     }
 
+    // 上传文件
     public boolean uploadFile(String remoteDir, File localFile) {
         try {
             String remotePath = (remoteDir == null || remoteDir.isEmpty()) ? localFile.getName()
@@ -203,6 +208,7 @@ public class WebDAVClient {
         }
     }
 
+    // 下载文件
     public boolean downloadFile(String remotePath, File destFile) {
         try {
             String url = serverUrl + "/" + remotePath.replace("//", "/");
@@ -224,10 +230,31 @@ public class WebDAVClient {
         }
     }
 
+    // 删除文件或目录
     public boolean deleteFile(String remotePath) {
         try {
             String url = serverUrl + "/" + remotePath.replace("//", "/");
             Request request = authRequest().url(url).delete().build();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // 重命名/移动文件（WebDAV 使用 MOVE 方法）
+    public boolean renameFile(String oldPath, String newName) {
+        try {
+            String oldUrl = serverUrl + "/" + oldPath.replace("//", "/");
+            String newUrl = serverUrl + "/" + oldPath.substring(0, oldPath.lastIndexOf('/') + 1) + newName;
+            Request request = authRequest()
+                    .url(oldUrl)
+                    .method("MOVE", null)
+                    .header("Destination", newUrl)
+                    .header("Overwrite", "F")
+                    .build();
             try (Response response = client.newCall(request).execute()) {
                 return response.isSuccessful();
             }
