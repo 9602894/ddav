@@ -33,13 +33,12 @@ public class SettingsActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
 
-        // 加载已保存的配置
         etServer.setText(prefs.getString("server_url", ""));
         etUsername.setText(prefs.getString("username", ""));
         etPassword.setText(prefs.getString("password", ""));
 
         btnTest.setOnClickListener(v -> testConnection());
-        btnSave.setOnClickListener(v -> saveSettings());
+        btnSave.setOnClickListener(v -> saveAndConnect());
     }
 
     private void testConnection() {
@@ -71,7 +70,8 @@ public class SettingsActivity extends AppCompatActivity {
         }).start();
     }
 
-    private void saveSettings() {
+    // ★ 保存配置并自动连接
+    private void saveAndConnect() {
         String server = etServer.getText().toString().trim();
         String username = etUsername.getText().toString().trim();
         String password = etPassword.getText().toString().trim();
@@ -81,19 +81,42 @@ public class SettingsActivity extends AppCompatActivity {
             return;
         }
 
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putString("server_url", server);
-        editor.putString("username", username);
-        editor.putString("password", password);
-        editor.apply();
+        // 先测试连接
+        tvStatus.setText("测试连接并保存...");
+        btnSave.setEnabled(false);
 
-        tvStatus.setText("✅ 配置已保存");
-        Toast.makeText(this, "配置已保存", Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            WebDAVClient client = new WebDAVClient(server, username, password);
+            boolean ok = client.testConnection();
+            mainHandler.post(() -> {
+                btnSave.setEnabled(true);
+                if (ok) {
+                    // 保存配置
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("server_url", server);
+                    editor.putString("username", username);
+                    editor.putString("password", password);
+                    editor.apply();
 
-        // 更新全局客户端
-        WebDAVClient client = new WebDAVClient(server, username, password);
-        WebDAVClientHolder.setClient(client);
+                    // ★ 保存当前连接信息，供 MainActivity 使用
+                    editor.putString("current_server", server);
+                    editor.putString("current_username", username);
+                    editor.putString("current_password", password);
+                    editor.apply();
 
-        finish();
+                    // ★ 更新全局客户端
+                    WebDAVClientHolder.setClient(client);
+
+                    tvStatus.setText("✅ 配置已保存并连接成功");
+                    Toast.makeText(SettingsActivity.this, "配置已保存并连接成功", Toast.LENGTH_LONG).show();
+
+                    // 返回主界面
+                    finish();
+                } else {
+                    tvStatus.setText("❌ 连接失败，无法保存");
+                    Toast.makeText(SettingsActivity.this, "连接失败，请检查配置", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }).start();
     }
 }
