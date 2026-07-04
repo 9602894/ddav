@@ -27,7 +27,7 @@ public class CloudActivity extends AppCompatActivity {
 
     private RecyclerView rvCloud;
     private TextView tvCloudPath, tvCloudCount, tvCloudSelected;
-    private Button btnDownload, btnUp, btnDeleteCloud, btnNewFolder;
+    private Button btnDownload, btnUp, btnDeleteCloud;
     private ImageView ivBack;
 
     private PhotoAdapter photoAdapter;
@@ -51,7 +51,6 @@ public class CloudActivity extends AppCompatActivity {
         btnDownload = findViewById(R.id.btn_download);
         btnUp = findViewById(R.id.btn_cloud_up);
         btnDeleteCloud = findViewById(R.id.btn_delete_cloud);
-        btnNewFolder = findViewById(R.id.btn_new_folder);
         ivBack = findViewById(R.id.iv_back);
 
         type = getIntent().getStringExtra("type");
@@ -79,6 +78,7 @@ public class CloudActivity extends AppCompatActivity {
             photoAdapter.setCloudView(true);
             photoAdapter.setShowLocalBadge(true);
             rvCloud.setAdapter(photoAdapter);
+            // 点击选中 / 进入目录
             photoAdapter.setOnItemClickListener((item, position) -> {
                 if (item.name.endsWith("/")) {
                     String subPath = item.name.substring(0, item.name.length() - 1);
@@ -90,13 +90,9 @@ public class CloudActivity extends AppCompatActivity {
                     updateSelectedCount();
                 }
             });
-            // ★ 长按菜单（重命名、删除）
+            // 长按菜单（重命名、删除、新建文件夹）
             photoAdapter.setOnItemLongClickListener((item, position) -> {
-                if (item.name.endsWith("/")) {
-                    showRemoteDirectoryMenu(item.name, position);
-                } else {
-                    showRemoteFileMenu(item.name, position);
-                }
+                showCloudItemMenu(item, position);
             });
         } else {
             allFilesAdapter = new AllFilesAdapter(this);
@@ -114,13 +110,8 @@ public class CloudActivity extends AppCompatActivity {
                     updateSelectedCount();
                 }
             });
-            // ★ 长按菜单（重命名、删除）
             allFilesAdapter.setOnItemLongClickListener((item, position) -> {
-                if (item.name.endsWith("/")) {
-                    showRemoteDirectoryMenu(item.name, position);
-                } else {
-                    showRemoteFileMenu(item.name, position);
-                }
+                showCloudItemMenu(item, position);
             });
         }
 
@@ -148,74 +139,66 @@ public class CloudActivity extends AppCompatActivity {
 
         btnDownload.setOnClickListener(v -> downloadSelected());
         btnDeleteCloud.setOnClickListener(v -> deleteSelected());
-        btnNewFolder.setOnClickListener(v -> showNewFolderDialog());
     }
 
-    // ★ 新建文件夹
-    private void showNewFolderDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("新建文件夹");
-        final EditText input = new EditText(this);
-        input.setHint("文件夹名称");
-        builder.setView(input);
-        builder.setPositiveButton("创建", (dialog, which) -> {
-            String name = input.getText().toString().trim();
-            if (name.isEmpty()) {
-                Toast.makeText(this, "名称不能为空", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            String newPath = currentPath.isEmpty() ? name : currentPath + "/" + name;
-            new Thread(() -> {
-                boolean ok = client.createDirectory(newPath);
-                mainHandler.post(() -> {
-                    if (ok) {
-                        Toast.makeText(CloudActivity.this, "文件夹已创建", Toast.LENGTH_SHORT).show();
-                        loadDirectory(currentPath);
-                    } else {
-                        Toast.makeText(CloudActivity.this, "创建失败", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }).start();
-        });
-        builder.setNegativeButton("取消", null);
-        builder.show();
-    }
+    // ★ 云端文件长按菜单
+    private void showCloudItemMenu(Object item, int position) {
+        String name;
+        boolean isDir;
+        if (isPhotoView) {
+            PhotoAdapter.PhotoItem pi = (PhotoAdapter.PhotoItem) item;
+            name = pi.name;
+            isDir = name.endsWith("/");
+        } else {
+            AllFilesAdapter.FileItem fi = (AllFilesAdapter.FileItem) item;
+            name = fi.name;
+            isDir = name.endsWith("/");
+        }
 
-    // ★ 重命名远程文件
-    private void showRemoteFileMenu(String name, int position) {
-        String[] options = {"重命名", "删除"};
+        String[] options;
+        if (isDir) {
+            options = new String[]{"重命名", "删除", "新建文件夹"};
+        } else {
+            options = new String[]{"重命名", "删除"};
+        }
+
         new AlertDialog.Builder(this)
                 .setTitle(name)
                 .setItems(options, (dialog, which) -> {
                     if (which == 0) {
-                        showRenameRemoteFileDialog(name);
+                        showRemoteRenameDialog(item, position, isDir);
                     } else if (which == 1) {
-                        deleteRemoteFile(name);
+                        showRemoteDeleteDialog(item, position, isDir);
+                    } else if (which == 2 && isDir) {
+                        showRemoteNewFolderDialog();
                     }
                 })
                 .show();
     }
 
-    private void showRenameRemoteFileDialog(String oldName) {
+    private void showRemoteRenameDialog(Object item, int position, boolean isDir) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("重命名文件");
+        builder.setTitle("重命名");
         final EditText input = new EditText(this);
+        String oldName = isPhotoView ? ((PhotoAdapter.PhotoItem) item).name : ((AllFilesAdapter.FileItem) item).name;
         input.setText(oldName);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
         builder.setView(input);
         builder.setPositiveButton("确定", (dialog, which) -> {
             String newName = input.getText().toString().trim();
-            if (newName.isEmpty() || newName.equals(oldName)) {
-                Toast.makeText(this, "名称未变更", Toast.LENGTH_SHORT).show();
+            if (newName.isEmpty()) {
+                Toast.makeText(this, "名称不能为空", Toast.LENGTH_SHORT).show();
                 return;
             }
             String oldPath = currentPath.isEmpty() ? oldName : currentPath + "/" + oldName;
             String newPath = currentPath.isEmpty() ? newName : currentPath + "/" + newName;
-            // WebDAV 重命名 = 复制 + 删除（或使用 MOVE 方法）
-            // 这里用下载 + 上传 + 删除简化，或直接用 MOVE（需服务器支持）
-            // 更可靠的方式：尝试 MOVE
             new Thread(() -> {
-                // 使用 MOVE 方法（WebDAV 标准）
-                boolean ok = client.moveFile(oldPath, newPath);
+                boolean ok;
+                if (isDir) {
+                    ok = client.moveDirectory(oldPath, newPath);
+                } else {
+                    ok = client.moveFile(oldPath, newPath);
+                }
                 mainHandler.post(() -> {
                     if (ok) {
                         Toast.makeText(CloudActivity.this, "重命名成功", Toast.LENGTH_SHORT).show();
@@ -230,17 +213,23 @@ public class CloudActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void deleteRemoteFile(String name) {
+    private void showRemoteDeleteDialog(Object item, int position, boolean isDir) {
+        String name = isPhotoView ? ((PhotoAdapter.PhotoItem) item).name : ((AllFilesAdapter.FileItem) item).name;
         new AlertDialog.Builder(this)
-                .setTitle("删除文件")
+                .setTitle("删除")
                 .setMessage("确定要删除 \"" + name + "\" 吗？")
                 .setPositiveButton("删除", (dialog, which) -> {
                     String remotePath = currentPath.isEmpty() ? name : currentPath + "/" + name;
                     new Thread(() -> {
-                        boolean ok = client.deleteFile(remotePath);
+                        boolean ok;
+                        if (isDir) {
+                            ok = client.deleteDirectory(remotePath);
+                        } else {
+                            ok = client.deleteFile(remotePath);
+                        }
                         mainHandler.post(() -> {
                             if (ok) {
-                                Toast.makeText(CloudActivity.this, "已删除", Toast.LENGTH_SHORT).show();
+                                Toast.makeText(CloudActivity.this, "删除成功", Toast.LENGTH_SHORT).show();
                                 loadDirectory(currentPath);
                             } else {
                                 Toast.makeText(CloudActivity.this, "删除失败", Toast.LENGTH_SHORT).show();
@@ -252,44 +241,28 @@ public class CloudActivity extends AppCompatActivity {
                 .show();
     }
 
-    // ★ 重命名远程目录
-    private void showRemoteDirectoryMenu(String name, int position) {
-        String[] options = {"重命名", "删除"};
-        new AlertDialog.Builder(this)
-                .setTitle(name)
-                .setItems(options, (dialog, which) -> {
-                    if (which == 0) {
-                        showRenameRemoteDirectoryDialog(name);
-                    } else if (which == 1) {
-                        deleteRemoteDirectory(name);
-                    }
-                })
-                .show();
-    }
-
-    private void showRenameRemoteDirectoryDialog(String oldName) {
+    private void showRemoteNewFolderDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("重命名文件夹");
+        builder.setTitle("新建文件夹");
         final EditText input = new EditText(this);
-        input.setText(oldName);
+        input.setHint("文件夹名称");
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
         builder.setView(input);
-        builder.setPositiveButton("确定", (dialog, which) -> {
-            String newName = input.getText().toString().trim();
-            if (newName.isEmpty() || newName.equals(oldName)) {
-                Toast.makeText(this, "名称未变更", Toast.LENGTH_SHORT).show();
+        builder.setPositiveButton("创建", (dialog, which) -> {
+            String folderName = input.getText().toString().trim();
+            if (folderName.isEmpty()) {
+                Toast.makeText(this, "名称不能为空", Toast.LENGTH_SHORT).show();
                 return;
             }
-            String oldPath = currentPath.isEmpty() ? oldName : currentPath + "/" + oldName;
-            String newPath = currentPath.isEmpty() ? newName : currentPath + "/" + newName;
+            String newPath = currentPath.isEmpty() ? folderName : currentPath + "/" + folderName;
             new Thread(() -> {
-                // 重命名目录：需要递归复制或 MOVE
-                boolean ok = client.moveDirectory(oldPath, newPath);
+                boolean ok = client.createDirectory(newPath);
                 mainHandler.post(() -> {
                     if (ok) {
-                        Toast.makeText(CloudActivity.this, "文件夹重命名成功", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(CloudActivity.this, "文件夹创建成功", Toast.LENGTH_SHORT).show();
                         loadDirectory(currentPath);
                     } else {
-                        Toast.makeText(CloudActivity.this, "重命名失败", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(CloudActivity.this, "创建失败", Toast.LENGTH_SHORT).show();
                     }
                 });
             }).start();
@@ -298,28 +271,7 @@ public class CloudActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void deleteRemoteDirectory(String name) {
-        new AlertDialog.Builder(this)
-                .setTitle("删除文件夹")
-                .setMessage("确定要删除文件夹 \"" + name + "\" 及其所有内容吗？")
-                .setPositiveButton("删除", (dialog, which) -> {
-                    String remotePath = currentPath.isEmpty() ? name : currentPath + "/" + name;
-                    new Thread(() -> {
-                        boolean ok = client.deleteDirectory(remotePath);
-                        mainHandler.post(() -> {
-                            if (ok) {
-                                Toast.makeText(CloudActivity.this, "文件夹已删除", Toast.LENGTH_SHORT).show();
-                                loadDirectory(currentPath);
-                            } else {
-                                Toast.makeText(CloudActivity.this, "删除失败", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                    }).start();
-                })
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
+    // 扫描本地文件（用于手机标记）
     private void collectLocalFiles() {
         localFileNames.clear();
         new Thread(() -> {
@@ -362,12 +314,14 @@ public class CloudActivity extends AppCompatActivity {
                     cursor.close();
                 }
             }
+            // 补充 Download 目录
             File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             if (downloadDir != null && downloadDir.exists()) {
                 for (File f : downloadDir.listFiles()) {
                     if (f.isFile()) localFileNames.add(f.getName());
                 }
             }
+            // 更新标记
             mainHandler.post(() -> {
                 if (isPhotoView) {
                     for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
@@ -552,7 +506,7 @@ public class CloudActivity extends AppCompatActivity {
                     allFilesAdapter.notifyDataSetChanged();
                 }
                 updateSelectedCount();
-                collectLocalFiles();
+                collectLocalFiles(); // 更新本地标记
                 loadDirectory(currentPath);
             });
         }).start();
