@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
     private PhotoAdapter photoAdapter;
     private AllFilesAdapter allFilesAdapter;
-    private boolean isPhotoView = true; // 本地相册
+    private boolean isPhotoView = true;
 
     private WebDAVClient webdavClient;
     private SharedPreferences prefs;
@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupRecyclerView();
         loadCurrentConnection();
-        showLocalPhotos(); // 默认显示本地相册
+        showLocalPhotos();
         setupListeners();
     }
 
@@ -106,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
         loadAllFiles();
     }
 
+    // ★ 加载当前连接（从 SharedPreferences 读取并自动连接）
     private void loadCurrentConnection() {
         String server = prefs.getString("current_server", "");
         String username = prefs.getString("current_username", "");
@@ -124,6 +125,12 @@ public class MainActivity extends AppCompatActivity {
                         loadRemoteFileList();
                     } else {
                         tvConnectionStatus.setText("⚠️ 连接失败: " + server);
+                        // 清除失效的连接信息
+                        SharedPreferences.Editor editor = prefs.edit();
+                        editor.remove("current_server");
+                        editor.remove("current_username");
+                        editor.remove("current_password");
+                        editor.apply();
                     }
                 });
             }).start();
@@ -245,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } else if (id == R.id.nav_cloud_photos || id == R.id.nav_cloud_all) {
                 if (webdavClient == null) {
-                    Toast.makeText(this, "请先配置 WebDAV 连接", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "请先在设置中配置并连接 WebDAV", Toast.LENGTH_LONG).show();
                     return false;
                 }
                 Intent intent = new Intent(this, CloudActivity.class);
@@ -256,7 +263,6 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
-        // 适配器点击事件
         photoAdapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             photoAdapter.notifyItemChanged(position);
