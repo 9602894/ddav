@@ -62,7 +62,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 选中效果
+        // 选中效果（Pho 风格：深橙色背景 + 高阴影）
         if (item.isSelected) {
             holder.cardView.setCardBackgroundColor(Color.parseColor("#FFE0B2"));
             holder.cardView.setCardElevation(16f);
@@ -81,14 +81,17 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 文件类型图标（不区分视频/图片，统一显示文件图标）
-        holder.ivVideoBadge.setVisibility(View.GONE); // 全部文件不显示视频标记
+        // 视频标记（全部文件不区分，隐藏）
+        holder.ivVideoBadge.setVisibility(View.GONE);
 
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
-        // 加载缩略图：如果是图片或视频则加载缩略图，否则显示类型图标
-        String ext = item.name.substring(item.name.lastIndexOf('.') + 1).toLowerCase();
+        // 加载缩略图：如果是图片或视频则加载缩略图，否则显示文件类型图标
+        String ext = "";
+        if (item.name.contains(".")) {
+            ext = item.name.substring(item.name.lastIndexOf('.') + 1).toLowerCase();
+        }
         if (isImageFile(ext) || isVideoFile(ext)) {
             Glide.with(context)
                     .load(item.file)
@@ -101,6 +104,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.ivThumbnail.setImageResource(getFileTypeIcon(ext));
         }
 
+        // 点击切换选中
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
@@ -118,24 +122,33 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
         return ext.matches("mp4|3gp|avi|mkv|mov|webm");
     }
 
+    // 文件类型图标（使用 Android 内置图标，避免引用不存在的资源）
     private int getFileTypeIcon(String ext) {
         switch (ext) {
-            case "pdf": return android.R.drawable.ic_menu_agenda;
+            case "pdf":
+                return android.R.drawable.ic_menu_agenda;
             case "doc":
-            case "docx": return android.R.drawable.ic_menu_edit;
+            case "docx":
+                return android.R.drawable.ic_menu_edit;
             case "xls":
-            case "xlsx": return android.R.drawable.ic_menu_manage;
+            case "xlsx":
+                return android.R.drawable.ic_menu_manage;
             case "ppt":
-            case "pptx": return android.R.drawable.ic_menu_slideshow;
+            case "pptx":
+                return android.R.drawable.ic_menu_slideshow;
             case "zip":
             case "rar":
-            case "7z": return android.R.drawable.ic_menu_archive;
+            case "7z":
+                return android.R.drawable.ic_menu_gallery; // 替代不存在的 ic_menu_archive
             case "mp3":
             case "wav":
-            case "flac": return android.R.drawable.ic_menu_my_calendar;
+            case "flac":
+                return android.R.drawable.ic_menu_my_calendar;
             case "txt":
-            case "log": return android.R.drawable.ic_menu_info_details;
-            default: return android.R.drawable.ic_menu_gallery;
+            case "log":
+                return android.R.drawable.ic_menu_info_details;
+            default:
+                return android.R.drawable.ic_menu_gallery;
         }
     }
 
