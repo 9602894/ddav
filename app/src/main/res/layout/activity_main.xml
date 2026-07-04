@@ -12,7 +12,6 @@
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
-
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -20,7 +19,6 @@
             android:textColor="#ffffff"
             android:textSize="18sp"
             android:textStyle="bold" />
-
         <ImageView
             android:id="@+id/iv_settings"
             android:layout_width="36dp"
@@ -40,7 +38,6 @@
         android:padding="8dp"
         android:background="#ffffff"
         android:elevation="2dp">
-
         <TextView
             android:id="@+id/tv_connection_status"
             android:layout_width="0dp"
@@ -49,7 +46,6 @@
             android:text="⚪ 未连接"
             android:textSize="13sp"
             android:textColor="#666666" />
-
         <EditText
             android:id="@+id/et_remote_dir"
             android:layout_width="120dp"
@@ -58,7 +54,6 @@
             android:textSize="13sp"
             android:padding="4dp"
             android:background="@android:drawable/editbox_background" />
-
         <TextView
             android:id="@+id/tv_item_count"
             android:layout_width="wrap_content"
@@ -69,7 +64,6 @@
             android:layout_marginStart="8dp" />
     </LinearLayout>
 
-    <!-- RecyclerView -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_photos"
         android:layout_width="match_parent"
@@ -79,7 +73,6 @@
         android:clipToPadding="false"
         android:background="#f5f5f5" />
 
-    <!-- 底部操作栏 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
@@ -89,7 +82,6 @@
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         android:gravity="center_vertical">
-
         <TextView
             android:id="@+id/tv_selected_count"
             android:layout_width="0dp"
@@ -98,7 +90,6 @@
             android:text="已选 0"
             android:textSize="13sp"
             android:textColor="#333333" />
-
         <Button
             android:id="@+id/btn_upload"
             android:layout_width="wrap_content"
@@ -109,7 +100,6 @@
             android:textSize="12sp"
             android:paddingStart="12dp"
             android:paddingEnd="12dp" />
-
         <Button
             android:id="@+id/btn_delete_local"
             android:layout_width="wrap_content"
@@ -121,7 +111,6 @@
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:layout_marginStart="4dp" />
-
         <Button
             android:id="@+id/btn_sync_all"
             android:layout_width="wrap_content"
@@ -143,5 +132,4 @@
         android:background="#ffffff"
         app:itemIconTint="@color/nav_tint"
         app:itemTextColor="@color/nav_tint" />
-
 </LinearLayout>
