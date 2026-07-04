@@ -31,7 +31,7 @@ public class CloudActivity extends AppCompatActivity {
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private List<String> localFileNames = new ArrayList<>();
     private WebDAVClient client;
-    private String type; // "photo" 或 "all"
+    private String type;
     private boolean isPhotoView = true;
 
     @Override
@@ -249,7 +249,6 @@ public class CloudActivity extends AppCompatActivity {
         tvCloudSelected.setText("已选择 " + count + " 项");
     }
 
-    // 下载选中的文件
     private void downloadSelected() {
         List<String> selectedNames = new ArrayList<>();
         if (isPhotoView) {
@@ -298,7 +297,6 @@ public class CloudActivity extends AppCompatActivity {
                 btnDownload.setEnabled(true);
                 tvCloudCount.setText("下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
                 Toast.makeText(CloudActivity.this, "下载完成", Toast.LENGTH_LONG).show();
-                // 清除选中
                 if (isPhotoView) {
                     for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) item.isSelected = false;
                     photoAdapter.notifyDataSetChanged();
@@ -313,7 +311,6 @@ public class CloudActivity extends AppCompatActivity {
         }).start();
     }
 
-    // 删除选中的云端文件
     private void deleteSelected() {
         List<String> selectedNames = new ArrayList<>();
         if (isPhotoView) {
