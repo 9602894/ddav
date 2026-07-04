@@ -37,14 +37,14 @@ public class MainActivity extends AppCompatActivity {
 
     private FrameLayout contentFrame;
     private RecyclerView rvPhotos;
-    private TextView tvConnectionStatus, tvPhotoCount;
+    private TextView tvConnectionStatus, tvItemCount;
     private EditText etRemoteDir;
     private ImageView ivSettings;
     private BottomNavigationView bottomNav;
 
-    private PhotoAdapter photoAdapter;          // 本地相册
-    private AllFilesAdapter allFilesAdapter;    // 本地全部
-    private int currentView = 0; // 0=相册, 1=全部
+    private PhotoAdapter photoAdapter;
+    private AllFilesAdapter allFilesAdapter;
+    private boolean isPhotoView = true; // 本地相册
 
     private WebDAVClient webdavClient;
     private SharedPreferences prefs;
@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupRecyclerView();
         loadCurrentConnection();
-        showPhotoView(); // 默认显示相册
+        showLocalPhotos(); // 默认显示本地相册
         setupListeners();
     }
 
@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         contentFrame.addView(rvPhotos);
 
         tvConnectionStatus = findViewById(R.id.tv_connection_status);
-        tvPhotoCount = findViewById(R.id.tv_photo_count);
+        tvItemCount = findViewById(R.id.tv_item_count);
         etRemoteDir = findViewById(R.id.et_remote_dir);
         ivSettings = findViewById(R.id.iv_settings);
         bottomNav = findViewById(R.id.bottom_navigation);
@@ -94,15 +94,15 @@ public class MainActivity extends AppCompatActivity {
         allFilesAdapter.setShowCloudBadge(true);
     }
 
-    private void showPhotoView() {
+    private void showLocalPhotos() {
         rvPhotos.setAdapter(photoAdapter);
-        currentView = 0;
+        isPhotoView = true;
         loadLocalPhotos();
     }
 
-    private void showAllFilesView() {
+    private void showLocalAll() {
         rvPhotos.setAdapter(allFilesAdapter);
-        currentView = 1;
+        isPhotoView = false;
         loadAllFiles();
     }
 
@@ -143,7 +143,6 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             mainHandler.post(() -> {
-                // 更新两个适配器的云端标记
                 for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
                 }
@@ -158,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadLocalPhotos() {
-        tvPhotoCount.setText("加载中...");
+        tvItemCount.setText("加载中...");
         new Thread(() -> {
             List<PhotoAdapter.PhotoItem> items = new ArrayList<>();
             String[] projection = {MediaStore.Images.Media.DATA, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_MODIFIED};
@@ -191,13 +190,13 @@ public class MainActivity extends AppCompatActivity {
             final List<PhotoAdapter.PhotoItem> finalItems = items;
             mainHandler.post(() -> {
                 photoAdapter.setItems(finalItems);
-                tvPhotoCount.setText(finalItems.size() + " 张");
+                tvItemCount.setText(finalItems.size() + " 张");
             });
         }).start();
     }
 
     private void loadAllFiles() {
-        tvPhotoCount.setText("加载中...");
+        tvItemCount.setText("加载中...");
         new Thread(() -> {
             List<AllFilesAdapter.FileItem> items = new ArrayList<>();
             String[] projection = {MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.DATE_MODIFIED};
@@ -228,7 +227,7 @@ public class MainActivity extends AppCompatActivity {
             final List<AllFilesAdapter.FileItem> finalItems = items;
             mainHandler.post(() -> {
                 allFilesAdapter.setItems(finalItems);
-                tvPhotoCount.setText(finalItems.size() + " 个");
+                tvItemCount.setText(finalItems.size() + " 个");
             });
         }).start();
     }
@@ -239,10 +238,10 @@ public class MainActivity extends AppCompatActivity {
         bottomNav.setOnItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_local_photos) {
-                showPhotoView();
+                showLocalPhotos();
                 return true;
             } else if (id == R.id.nav_local_all) {
-                showAllFilesView();
+                showLocalAll();
                 return true;
             } else if (id == R.id.nav_cloud_photos || id == R.id.nav_cloud_all) {
                 if (webdavClient == null) {
@@ -273,7 +272,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadCurrentConnection();
-        if (currentView == 0) loadLocalPhotos();
+        if (isPhotoView) loadLocalPhotos();
         else loadAllFiles();
     }
 }
