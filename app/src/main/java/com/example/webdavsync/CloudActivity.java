@@ -250,28 +250,34 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void downloadSelected() {
-        // 获取选中列表（根据类型）
-        List<?> selected;
         if (isPhotoView) {
-            selected = new ArrayList<>();
+            List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
             for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
                 if (item.isSelected && !item.name.endsWith("/")) {
                     selected.add(item);
                 }
             }
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            performDownload(selected);
         } else {
-            selected = new ArrayList<>();
+            List<AllFilesAdapter.FileItem> selected = new ArrayList<>();
             for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
                 if (item.isSelected && !item.name.endsWith("/")) {
                     selected.add(item);
                 }
             }
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            performDownload(selected);
         }
-        if (selected.isEmpty()) {
-            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    }
 
+    private void performDownload(List<?> selected) {
         Toast.makeText(this, "开始下载 " + selected.size() + " 个文件", Toast.LENGTH_SHORT).show();
         btnDownload.setEnabled(false);
 
@@ -281,8 +287,10 @@ public class CloudActivity extends AppCompatActivity {
                 String name;
                 if (obj instanceof PhotoAdapter.PhotoItem) {
                     name = ((PhotoAdapter.PhotoItem) obj).name;
-                } else {
+                } else if (obj instanceof AllFilesAdapter.FileItem) {
                     name = ((AllFilesAdapter.FileItem) obj).name;
+                } else {
+                    continue;
                 }
                 File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 if (!downloadDir.exists()) downloadDir.mkdirs();
@@ -323,7 +331,64 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void deleteSelected() {
-        // 类似下载，但调用 deleteFile
-        // ...
+        if (isPhotoView) {
+            List<PhotoAdapter.PhotoItem> selected = new ArrayList<>();
+            for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
+                if (item.isSelected && !item.name.endsWith("/")) {
+                    selected.add(item);
+                }
+            }
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            performDelete(selected);
+        } else {
+            List<AllFilesAdapter.FileItem> selected = new ArrayList<>();
+            for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
+                if (item.isSelected && !item.name.endsWith("/")) {
+                    selected.add(item);
+                }
+            }
+            if (selected.isEmpty()) {
+                Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            performDelete(selected);
+        }
+    }
+
+    private void performDelete(List<?> selected) {
+        new AlertDialog.Builder(this)
+                .setTitle("删除云端文件")
+                .setMessage("确定要删除选中的 " + selected.size() + " 个文件吗？")
+                .setPositiveButton("删除", (dialog, which) -> {
+                    Toast.makeText(this, "开始删除...", Toast.LENGTH_SHORT).show();
+                    new Thread(() -> {
+                        int success = 0, fail = 0;
+                        for (Object obj : selected) {
+                            String name;
+                            if (obj instanceof PhotoAdapter.PhotoItem) {
+                                name = ((PhotoAdapter.PhotoItem) obj).name;
+                            } else if (obj instanceof AllFilesAdapter.FileItem) {
+                                name = ((AllFilesAdapter.FileItem) obj).name;
+                            } else {
+                                continue;
+                            }
+                            String remotePath = currentPath.isEmpty() ? name : currentPath + "/" + name;
+                            boolean ok = client.deleteFile(remotePath);
+                            if (ok) success++; else fail++;
+                        }
+                        final int finalSuccess = success;
+                        final int finalFail = fail;
+                        mainHandler.post(() -> {
+                            tvCloudCount.setText("删除完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
+                            Toast.makeText(CloudActivity.this, "删除完成", Toast.LENGTH_LONG).show();
+                            loadDirectory(currentPath);
+                        });
+                    }).start();
+                })
+                .setNegativeButton("取消", null)
+                .show();
     }
 }
