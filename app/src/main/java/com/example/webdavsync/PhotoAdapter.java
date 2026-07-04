@@ -67,16 +67,14 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // ★ 强制视觉选中：亮橙色背景 + 高阴影
         if (item.isSelected) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#FFB74D")); // 亮橙色
-            holder.cardView.setCardElevation(20f);
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#FFE0B2"));
+            holder.cardView.setCardElevation(16f);
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setCardElevation(2f);
         }
 
-        // ★ 云朵标记（半透明蓝色圆角）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -86,7 +84,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // ★ 手机标记（半透明绿色圆角）
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -96,7 +93,6 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.tvLocalBadge.setVisibility(View.GONE);
         }
 
-        // 视频标记
         if (item.isVideo) {
             holder.ivVideoBadge.setVisibility(View.VISIBLE);
         } else {
@@ -104,9 +100,7 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
         }
 
         holder.tvName.setText(item.displayName);
-        holder.tvName.setVisibility(View.VISIBLE);
 
-        // 缩略图
         if (isCloudView && item.remoteUrl != null) {
             Glide.with(context)
                     .load(item.remoteUrl)
@@ -137,12 +131,10 @@ public class PhotoAdapter extends RecyclerView.Adapter<PhotoAdapter.ViewHolder> 
             holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
         }
 
-        // ★ 单击切换选中（Pho 风格）
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
 
-        // 复选框点击同样触发
         holder.cbSelect.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
