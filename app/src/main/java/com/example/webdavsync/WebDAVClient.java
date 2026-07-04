@@ -21,7 +21,6 @@ public class WebDAVClient {
     private static OkHttpClient okHttpClient;
 
     public WebDAVClient(String serverUrl, String username, String password) {
-        // 确保 serverUrl 不以 / 结尾
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
         this.username = username == null ? "" : username;
         this.password = password == null ? "" : password;
@@ -32,9 +31,9 @@ public class WebDAVClient {
         updateOkHttpClient(this.username, this.password);
     }
 
-    public String getServerUrl() { return serverUrl; }
     public String getUsername() { return username; }
     public String getPassword() { return password; }
+    public String getServerUrl() { return serverUrl; }
 
     private static OkHttpClient buildOkHttpClient(String user, String pass) {
         OkHttpClient.Builder builder = new OkHttpClient.Builder()
@@ -71,7 +70,6 @@ public class WebDAVClient {
         return builder;
     }
 
-    // 测试连接
     public boolean testConnection() {
         try {
             Request request = authRequest()
@@ -88,7 +86,6 @@ public class WebDAVClient {
         }
     }
 
-    // 创建目录（递归）
     public boolean createDirectory(String path) {
         if (path == null || path.isEmpty()) return true;
         try {
@@ -119,7 +116,6 @@ public class WebDAVClient {
         }
     }
 
-    // 列出目录内容（返回文件名列表，目录以 / 结尾）
     public List<String> listDirectory(String path) {
         List<String> entries = new ArrayList<>();
         try {
@@ -141,7 +137,6 @@ public class WebDAVClient {
                     return entries;
                 }
                 String body = response.body().string();
-                // 解析 href
                 Pattern pattern = Pattern.compile("<[a-zA-Z0-9:]*href>([^<]+)</[a-zA-Z0-9:]*href>");
                 Matcher matcher = pattern.matcher(body);
                 boolean found = false;
@@ -150,16 +145,12 @@ public class WebDAVClient {
                     if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
                     String relative = href.replace(serverUrl + "/", "");
                     if (!relative.isEmpty()) {
-                        // ★ 确保目录以 / 结尾
-                        if (href.endsWith("/") && !relative.endsWith("/")) {
-                            relative += "/";
-                        }
+                        if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
                         entries.add(relative);
                         found = true;
                     }
                 }
                 if (!found) {
-                    // 备用解析（标准 href）
                     Pattern pattern2 = Pattern.compile("<href>([^<]+)</href>");
                     Matcher matcher2 = pattern2.matcher(body);
                     while (matcher2.find()) {
@@ -167,9 +158,7 @@ public class WebDAVClient {
                         if (href.equals(url + "/") || href.equals(url) || href.equals(serverUrl + "/")) continue;
                         String relative = href.replace(serverUrl + "/", "");
                         if (!relative.isEmpty()) {
-                            if (href.endsWith("/") && !relative.endsWith("/")) {
-                                relative += "/";
-                            }
+                            if (href.endsWith("/") && !relative.endsWith("/")) relative += "/";
                             entries.add(relative);
                             found = true;
                         }
@@ -189,7 +178,6 @@ public class WebDAVClient {
         return entries;
     }
 
-    // 上传文件
     public boolean uploadFile(String remoteDir, File localFile) {
         try {
             String remotePath = (remoteDir == null || remoteDir.isEmpty()) ? localFile.getName()
@@ -208,7 +196,6 @@ public class WebDAVClient {
         }
     }
 
-    // 下载文件
     public boolean downloadFile(String remotePath, File destFile) {
         try {
             String url = serverUrl + "/" + remotePath.replace("//", "/");
@@ -230,7 +217,6 @@ public class WebDAVClient {
         }
     }
 
-    // 删除文件或目录
     public boolean deleteFile(String remotePath) {
         try {
             String url = serverUrl + "/" + remotePath.replace("//", "/");
@@ -244,16 +230,37 @@ public class WebDAVClient {
         }
     }
 
-    // 重命名/移动文件（WebDAV 使用 MOVE 方法）
-    public boolean renameFile(String oldPath, String newName) {
+    // ★ 新增：移动文件
+    public boolean moveFile(String oldPath, String newPath) {
         try {
             String oldUrl = serverUrl + "/" + oldPath.replace("//", "/");
-            String newUrl = serverUrl + "/" + oldPath.substring(0, oldPath.lastIndexOf('/') + 1) + newName;
+            String newUrl = serverUrl + "/" + newPath.replace("//", "/");
             Request request = authRequest()
                     .url(oldUrl)
                     .method("MOVE", null)
                     .header("Destination", newUrl)
-                    .header("Overwrite", "F")
+                    .build();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    // ★ 新增：移动目录（递归，但 WebDAV 通常支持 MOVE 目录）
+    public boolean moveDirectory(String oldPath, String newPath) {
+        return moveFile(oldPath, newPath); // 目录移动与文件相同
+    }
+
+    // ★ 新增：删除目录（递归删除）
+    public boolean deleteDirectory(String remotePath) {
+        try {
+            String url = serverUrl + "/" + remotePath.replace("//", "/") + "/";
+            Request request = authRequest()
+                    .url(url)
+                    .method("DELETE", null)
                     .build();
             try (Response response = client.newCall(request).execute()) {
                 return response.isSuccessful();
