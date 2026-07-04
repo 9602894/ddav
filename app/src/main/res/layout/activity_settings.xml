@@ -9,41 +9,24 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="WebDAV 连接管理"
-        android:textSize="18sp"
+        android:text="WebDAV 配置管理"
+        android:textSize="20sp"
         android:textStyle="bold"
-        android:layout_marginBottom="12dp" />
-
-    <!-- 已保存配置列表 -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="已保存的配置"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:layout_marginBottom="4dp" />
+        android:layout_marginBottom="16dp" />
 
     <ListView
         android:id="@+id/lv_configs"
         android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:background="#ffffff"
-        android:layout_marginBottom="12dp" />
-
-    <!-- 编辑区域 -->
-    <TextView
-        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="编辑配置"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        android:layout_marginBottom="4dp" />
+        android:maxHeight="150dp"
+        android:background="#ffffff"
+        android:layout_marginBottom="16dp" />
 
     <EditText
         android:id="@+id/et_config_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="配置名称 (如: 我的路由器)"
+        android:hint="配置名称 (如 路由器)"
         android:padding="12dp"
         android:background="@android:drawable/editbox_background"
         android:layout_marginBottom="8dp" />
@@ -74,14 +57,12 @@
         android:inputType="textPassword"
         android:padding="12dp"
         android:background="@android:drawable/editbox_background"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="16dp" />
 
-    <!-- 操作按钮 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
+        android:orientation="horizontal">
 
         <Button
             android:id="@+id/btn_test_connection"
@@ -114,16 +95,16 @@
             android:textColor="#ffffff"
             android:layout_marginStart="4dp" />
 
-        <Button
-            android:id="@+id/btn_connect_config"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:layout_height="wrap_content"
-            android:text="连接"
-            android:backgroundTint="#FF9800"
-            android:textColor="#ffffff"
-            android:layout_marginStart="4dp" />
     </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_connect_config"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="连接此配置"
+        android:backgroundTint="#FF9800"
+        android:textColor="#ffffff"
+        android:layout_marginTop="8dp" />
 
     <TextView
         android:id="@+id/tv_settings_status"
@@ -133,6 +114,7 @@
         android:gravity="center"
         android:padding="8dp"
         android:textSize="14sp"
-        android:textColor="#666666" />
+        android:textColor="#666666"
+        android:layout_marginTop="8dp" />
 
 </LinearLayout>
