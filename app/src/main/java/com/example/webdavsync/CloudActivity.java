@@ -32,6 +32,7 @@ public class CloudActivity extends AppCompatActivity {
     private List<String> localFileNames = new ArrayList<>();
     private WebDAVClient client;
     private String type; // "photo" 或 "all"
+    private boolean isPhotoView = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,6 +50,7 @@ public class CloudActivity extends AppCompatActivity {
 
         type = getIntent().getStringExtra("type");
         if (type == null) type = "photo";
+        isPhotoView = type.equals("photo");
 
         client = WebDAVClientHolder.getClient();
         if (client == null) {
@@ -66,7 +68,7 @@ public class CloudActivity extends AppCompatActivity {
 
         rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
 
-        if (type.equals("photo")) {
+        if (isPhotoView) {
             photoAdapter = new PhotoAdapter(this);
             photoAdapter.setCloudView(true);
             photoAdapter.setShowLocalBadge(true);
@@ -143,7 +145,7 @@ public class CloudActivity extends AppCompatActivity {
         new Thread(() -> {
             List<String> items = client.listDirectory(currentPath);
             mainHandler.post(() -> {
-                if (type.equals("photo")) {
+                if (isPhotoView) {
                     List<PhotoAdapter.PhotoItem> list = new ArrayList<>();
                     if (items != null && !items.isEmpty()) {
                         boolean hasError = false;
@@ -157,7 +159,6 @@ public class CloudActivity extends AppCompatActivity {
                         if (!hasError) {
                             for (String item : items) {
                                 if (item.endsWith("/")) {
-                                    // 目录
                                     PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
                                     fi.name = item;
                                     fi.displayName = item;
@@ -167,7 +168,6 @@ public class CloudActivity extends AppCompatActivity {
                                     fi.isVideo = false;
                                     list.add(fi);
                                 } else {
-                                    // 仅图片/视频
                                     String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
                                     if (ext.matches("jpg|jpeg|png|gif|bmp|webp|mp4|3gp|avi|mkv|mov|webm")) {
                                         PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
@@ -192,7 +192,6 @@ public class CloudActivity extends AppCompatActivity {
                     photoAdapter.setItems(list);
                     updateSelectedCount();
                 } else {
-                    // 全部文件
                     List<AllFilesAdapter.FileItem> list = new ArrayList<>();
                     if (items != null && !items.isEmpty()) {
                         boolean hasError = false;
@@ -218,7 +217,7 @@ public class CloudActivity extends AppCompatActivity {
                                     fi.displayName = item;
                                     fi.isOnCloud = true;
                                     fi.isOnLocal = localFileNames.contains(item);
-                                    fi.file = null; // 无本地文件
+                                    fi.file = null;
                                     fi.dateModified = 0;
                                     list.add(fi);
                                 }
@@ -238,7 +237,7 @@ public class CloudActivity extends AppCompatActivity {
 
     private void updateSelectedCount() {
         int count = 0;
-        if (type.equals("photo")) {
+        if (isPhotoView) {
             for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
                 if (item.isSelected) count++;
             }
@@ -251,12 +250,80 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void downloadSelected() {
-        // 实现略，与之前相同，但需根据 type 获取选中列表
-        // ...
+        // 获取选中列表（根据类型）
+        List<?> selected;
+        if (isPhotoView) {
+            selected = new ArrayList<>();
+            for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
+                if (item.isSelected && !item.name.endsWith("/")) {
+                    selected.add(item);
+                }
+            }
+        } else {
+            selected = new ArrayList<>();
+            for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
+                if (item.isSelected && !item.name.endsWith("/")) {
+                    selected.add(item);
+                }
+            }
+        }
+        if (selected.isEmpty()) {
+            Toast.makeText(this, "请先选择文件", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(this, "开始下载 " + selected.size() + " 个文件", Toast.LENGTH_SHORT).show();
+        btnDownload.setEnabled(false);
+
+        new Thread(() -> {
+            int success = 0, fail = 0;
+            for (Object obj : selected) {
+                String name;
+                if (obj instanceof PhotoAdapter.PhotoItem) {
+                    name = ((PhotoAdapter.PhotoItem) obj).name;
+                } else {
+                    name = ((AllFilesAdapter.FileItem) obj).name;
+                }
+                File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+                if (!downloadDir.exists()) downloadDir.mkdirs();
+                File destFile = new File(downloadDir, name);
+                // 处理重名
+                int count = 1;
+                String base = name;
+                String ext = "";
+                int dot = name.lastIndexOf('.');
+                if (dot > 0) { base = name.substring(0, dot); ext = name.substring(dot); }
+                while (destFile.exists()) {
+                    destFile = new File(downloadDir, base + "_" + count + ext);
+                    count++;
+                }
+                String remotePath = currentPath.isEmpty() ? name : currentPath + "/" + name;
+                boolean ok = client.downloadFile(remotePath, destFile);
+                if (ok) success++; else fail++;
+            }
+            final int finalSuccess = success;
+            final int finalFail = fail;
+            mainHandler.post(() -> {
+                btnDownload.setEnabled(true);
+                tvCloudCount.setText("下载完成: 成功 " + finalSuccess + ", 失败 " + finalFail);
+                Toast.makeText(CloudActivity.this, "下载完成", Toast.LENGTH_LONG).show();
+                // 清除选中
+                if (isPhotoView) {
+                    for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) item.isSelected = false;
+                    photoAdapter.notifyDataSetChanged();
+                } else {
+                    for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) item.isSelected = false;
+                    allFilesAdapter.notifyDataSetChanged();
+                }
+                updateSelectedCount();
+                collectLocalFiles();
+                loadDirectory(currentPath);
+            });
+        }).start();
     }
 
     private void deleteSelected() {
-        // 实现略
+        // 类似下载，但调用 deleteFile
         // ...
     }
 }
