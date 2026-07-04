@@ -72,7 +72,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.cardView.setCardElevation(2f);
         }
 
-        // 云朵标记（本地视图显示）
+        // 云朵标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -82,7 +82,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记（云端视图显示）
+        // 手机标记
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -103,7 +103,6 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
         }
         if (isImageFile(ext) || isVideoFile(ext)) {
             if (isCloudView && item.file == null) {
-                // 云端：尝试加载远程缩略图（暂时用占位）
                 holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
             } else if (item.file != null && item.file.exists()) {
                 Glide.with(context)
