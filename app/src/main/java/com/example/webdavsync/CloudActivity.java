@@ -249,6 +249,7 @@ public class CloudActivity extends AppCompatActivity {
         tvCloudSelected.setText("已选择 " + count + " 项");
     }
 
+    // 下载选中的文件
     private void downloadSelected() {
         List<String> selectedNames = new ArrayList<>();
         if (isPhotoView) {
@@ -278,7 +279,6 @@ public class CloudActivity extends AppCompatActivity {
                 File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
                 if (!downloadDir.exists()) downloadDir.mkdirs();
                 File destFile = new File(downloadDir, name);
-                // 处理重名
                 int count = 1;
                 String base = name;
                 String ext = "";
@@ -313,6 +313,7 @@ public class CloudActivity extends AppCompatActivity {
         }).start();
     }
 
+    // 删除选中的云端文件
     private void deleteSelected() {
         List<String> selectedNames = new ArrayList<>();
         if (isPhotoView) {
