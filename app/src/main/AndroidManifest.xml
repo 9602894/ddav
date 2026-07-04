@@ -32,7 +32,6 @@
             android:name=".SettingsActivity"
             android:windowSoftInputMode="adjustPan" />
 
-        <!-- 新增的 Activity 无需注册，因为已包含在 MainActivity 的底部导航中，不单独注册 -->
     </application>
 
 </manifest>
