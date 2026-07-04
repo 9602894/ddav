@@ -21,6 +21,8 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
     private Context context;
     private List<FileItem> items = new ArrayList<>();
     private boolean showCloudBadge = false;
+    private boolean showLocalBadge = false;
+    private boolean isCloudView = false;
 
     public interface OnItemClickListener {
         void onItemClick(FileItem item, int position);
@@ -41,9 +43,9 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
         return items;
     }
 
-    public void setShowCloudBadge(boolean show) {
-        this.showCloudBadge = show;
-    }
+    public void setShowCloudBadge(boolean show) { this.showCloudBadge = show; }
+    public void setShowLocalBadge(boolean show) { this.showLocalBadge = show; }
+    public void setCloudView(boolean isCloud) { this.isCloudView = isCloud; }
 
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.clickListener = listener;
@@ -62,7 +64,6 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
 
         holder.cbSelect.setChecked(item.isSelected);
 
-        // 选中效果（Pho 风格：深橙色背景 + 高阴影）
         if (item.isSelected) {
             holder.cardView.setCardBackgroundColor(Color.parseColor("#FFE0B2"));
             holder.cardView.setCardElevation(16f);
@@ -71,7 +72,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.cardView.setCardElevation(2f);
         }
 
-        // 云朵标记
+        // 云朵标记（本地视图显示）
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -81,30 +82,44 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 视频标记（全部文件不区分，隐藏）
+        // 手机标记（云端视图显示）
+        if (showLocalBadge && item.isOnLocal) {
+            holder.tvLocalBadge.setVisibility(View.VISIBLE);
+            holder.tvLocalBadge.setText("📱");
+            holder.tvLocalBadge.setTextColor(Color.WHITE);
+            holder.tvLocalBadge.setBackgroundResource(R.drawable.badge_local_bg);
+        } else {
+            holder.tvLocalBadge.setVisibility(View.GONE);
+        }
+
         holder.ivVideoBadge.setVisibility(View.GONE);
 
         holder.tvName.setText(item.displayName);
         holder.tvName.setVisibility(View.VISIBLE);
 
-        // 加载缩略图：如果是图片或视频则加载缩略图，否则显示文件类型图标
         String ext = "";
         if (item.name.contains(".")) {
             ext = item.name.substring(item.name.lastIndexOf('.') + 1).toLowerCase();
         }
         if (isImageFile(ext) || isVideoFile(ext)) {
-            Glide.with(context)
-                    .load(item.file)
-                    .centerCrop()
-                    .override(300, 300)
-                    .placeholder(android.R.drawable.ic_menu_gallery)
-                    .error(android.R.drawable.ic_menu_gallery)
-                    .into(holder.ivThumbnail);
+            if (isCloudView && item.file == null) {
+                // 云端：尝试加载远程缩略图（暂时用占位）
+                holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+            } else if (item.file != null && item.file.exists()) {
+                Glide.with(context)
+                        .load(item.file)
+                        .centerCrop()
+                        .override(300, 300)
+                        .placeholder(android.R.drawable.ic_menu_gallery)
+                        .error(android.R.drawable.ic_menu_gallery)
+                        .into(holder.ivThumbnail);
+            } else {
+                holder.ivThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+            }
         } else {
             holder.ivThumbnail.setImageResource(getFileTypeIcon(ext));
         }
 
-        // 点击切换选中
         holder.itemView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onItemClick(item, position);
         });
@@ -122,33 +137,24 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
         return ext.matches("mp4|3gp|avi|mkv|mov|webm");
     }
 
-    // 文件类型图标（使用 Android 内置图标，避免引用不存在的资源）
     private int getFileTypeIcon(String ext) {
         switch (ext) {
-            case "pdf":
-                return android.R.drawable.ic_menu_agenda;
+            case "pdf": return android.R.drawable.ic_menu_agenda;
             case "doc":
-            case "docx":
-                return android.R.drawable.ic_menu_edit;
+            case "docx": return android.R.drawable.ic_menu_edit;
             case "xls":
-            case "xlsx":
-                return android.R.drawable.ic_menu_manage;
+            case "xlsx": return android.R.drawable.ic_menu_manage;
             case "ppt":
-            case "pptx":
-                return android.R.drawable.ic_menu_slideshow;
+            case "pptx": return android.R.drawable.ic_menu_slideshow;
             case "zip":
             case "rar":
-            case "7z":
-                return android.R.drawable.ic_menu_gallery; // 替代不存在的 ic_menu_archive
+            case "7z": return android.R.drawable.ic_menu_gallery;
             case "mp3":
             case "wav":
-            case "flac":
-                return android.R.drawable.ic_menu_my_calendar;
+            case "flac": return android.R.drawable.ic_menu_my_calendar;
             case "txt":
-            case "log":
-                return android.R.drawable.ic_menu_info_details;
-            default:
-                return android.R.drawable.ic_menu_gallery;
+            case "log": return android.R.drawable.ic_menu_info_details;
+            default: return android.R.drawable.ic_menu_gallery;
         }
     }
 
@@ -159,7 +165,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView ivThumbnail, ivVideoBadge;
-        TextView tvName, tvCloudBadge;
+        TextView tvName, tvCloudBadge, tvLocalBadge;
         CheckBox cbSelect;
         CardView cardView;
 
@@ -169,6 +175,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             ivVideoBadge = itemView.findViewById(R.id.iv_video_badge);
             tvName = itemView.findViewById(R.id.tv_name);
             tvCloudBadge = itemView.findViewById(R.id.tv_cloud_badge);
+            tvLocalBadge = itemView.findViewById(R.id.tv_local_badge);
             cbSelect = itemView.findViewById(R.id.cb_select);
             cardView = itemView.findViewById(R.id.card_view);
         }
@@ -180,6 +187,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
         public File file;
         public boolean isSelected;
         public boolean isOnCloud;
+        public boolean isOnLocal;
         public long dateModified;
 
         public FileItem(String name) {
