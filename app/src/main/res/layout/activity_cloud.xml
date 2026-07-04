@@ -114,5 +114,16 @@
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:layout_marginStart="4dp" />
+        <Button
+            android:id="@+id/btn_new_folder"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="新建"
+            android:backgroundTint="#FF9800"
+            android:textColor="#ffffff"
+            android:textSize="12sp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:layout_marginStart="4dp" />   
     </LinearLayout>
 </LinearLayout>
