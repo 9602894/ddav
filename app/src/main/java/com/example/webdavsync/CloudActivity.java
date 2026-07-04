@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -16,7 +17,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class CloudActivity extends AppCompatActivity {
 
@@ -29,7 +32,7 @@ public class CloudActivity extends AppCompatActivity {
     private AllFilesAdapter allFilesAdapter;
     private String currentPath = "";
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-    private List<String> localFileNames = new ArrayList<>();
+    private Set<String> localFileNames = new HashSet<>(); // 改为 Set 提高查询效率
     private WebDAVClient client;
     private String type;
     private boolean isPhotoView = true;
@@ -75,7 +78,6 @@ public class CloudActivity extends AppCompatActivity {
             rvCloud.setAdapter(photoAdapter);
             photoAdapter.setOnItemClickListener((item, position) -> {
                 if (item.name.endsWith("/")) {
-                    // ★ 进入子目录
                     String subPath = item.name.substring(0, item.name.length() - 1);
                     String newPath = currentPath.isEmpty() ? subPath : currentPath + "/" + subPath;
                     loadDirectory(newPath);
@@ -105,7 +107,6 @@ public class CloudActivity extends AppCompatActivity {
 
         loadDirectory("");
 
-        // ★ 点击路径返回根目录
         tvCloudPath.setOnClickListener(v -> {
             if (!currentPath.isEmpty()) {
                 loadDirectory("");
@@ -130,13 +131,73 @@ public class CloudActivity extends AppCompatActivity {
         btnDeleteCloud.setOnClickListener(v -> deleteSelected());
     }
 
+    // ★ 修正：根据视图类型扫描本地文件，获取文件名集合
     private void collectLocalFiles() {
-        File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-        if (downloadDir != null && downloadDir.exists()) {
-            for (File f : downloadDir.listFiles()) {
-                if (f.isFile()) localFileNames.add(f.getName());
+        localFileNames.clear();
+        new Thread(() -> {
+            if (isPhotoView) {
+                // 扫描图片和视频（MediaStore）
+                String[] projection = {MediaStore.Files.FileColumns.DISPLAY_NAME};
+                String selection = MediaStore.Files.FileColumns.MEDIA_TYPE + "="
+                        + MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE
+                        + " OR " + MediaStore.Files.FileColumns.MEDIA_TYPE + "="
+                        + MediaStore.Files.FileColumns.MEDIA_TYPE_VIDEO;
+                android.database.Cursor cursor = getContentResolver().query(
+                        MediaStore.Files.getContentUri("external"),
+                        projection,
+                        selection,
+                        null,
+                        null
+                );
+                if (cursor != null) {
+                    int nameIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
+                    while (cursor.moveToNext()) {
+                        String name = cursor.getString(nameIdx);
+                        if (name != null) localFileNames.add(name);
+                    }
+                    cursor.close();
+                }
+            } else {
+                // 扫描所有文件（MediaStore）
+                String[] projection = {MediaStore.Files.FileColumns.DISPLAY_NAME};
+                android.database.Cursor cursor = getContentResolver().query(
+                        MediaStore.Files.getContentUri("external"),
+                        projection,
+                        null,
+                        null,
+                        null
+                );
+                if (cursor != null) {
+                    int nameIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
+                    while (cursor.moveToNext()) {
+                        String name = cursor.getString(nameIdx);
+                        if (name != null) localFileNames.add(name);
+                    }
+                    cursor.close();
+                }
             }
-        }
+            // 额外添加 Download 目录文件（可能不在 MediaStore 中）
+            File downloadDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            if (downloadDir != null && downloadDir.exists()) {
+                for (File f : downloadDir.listFiles()) {
+                    if (f.isFile()) localFileNames.add(f.getName());
+                }
+            }
+            // 更新适配器显示
+            mainHandler.post(() -> {
+                if (isPhotoView) {
+                    for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
+                        item.isOnLocal = localFileNames.contains(item.name);
+                    }
+                    photoAdapter.notifyDataSetChanged();
+                } else {
+                    for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
+                        item.isOnLocal = localFileNames.contains(item.name);
+                    }
+                    allFilesAdapter.notifyDataSetChanged();
+                }
+            });
+        }).start();
     }
 
     private void loadDirectory(String path) {
@@ -307,7 +368,7 @@ public class CloudActivity extends AppCompatActivity {
                     allFilesAdapter.notifyDataSetChanged();
                 }
                 updateSelectedCount();
-                collectLocalFiles();
+                collectLocalFiles(); // 重新扫描本地文件，更新标记
                 loadDirectory(currentPath);
             });
         }).start();
