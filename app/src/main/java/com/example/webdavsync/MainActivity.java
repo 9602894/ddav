@@ -37,7 +37,6 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSIONS = 100;
 
-    private FrameLayout contentFrame;
     private RecyclerView rvPhotos;
     private TextView tvConnectionStatus, tvItemCount, tvSelectedCount;
     private EditText etRemoteDir;
@@ -47,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
     private PhotoAdapter photoAdapter;
     private AllFilesAdapter allFilesAdapter;
-    private boolean isPhotoView = true; // 当前为本地相册
+    private boolean isPhotoView = true;
 
     private WebDAVClient webdavClient;
     private SharedPreferences prefs;
@@ -74,16 +73,12 @@ public class MainActivity extends AppCompatActivity {
 
         setupRecyclerView();
         loadCurrentConnection();
-        showLocalPhotos(); // 默认显示本地相册
+        showLocalPhotos();
         setupListeners();
     }
 
     private void initViews() {
-        contentFrame = findViewById(R.id.content_frame);
-        rvPhotos = new RecyclerView(this);
-        rvPhotos.setLayoutManager(new GridLayoutManager(this, 3));
-        contentFrame.addView(rvPhotos);
-
+        rvPhotos = findViewById(R.id.rv_photos);
         tvConnectionStatus = findViewById(R.id.tv_connection_status);
         tvItemCount = findViewById(R.id.tv_item_count);
         tvSelectedCount = findViewById(R.id.tv_selected_count);
@@ -93,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
         btnUpload = findViewById(R.id.btn_upload);
         btnDeleteLocal = findViewById(R.id.btn_delete_local);
         btnSyncAll = findViewById(R.id.btn_sync_all);
+
+        rvPhotos.setLayoutManager(new GridLayoutManager(this, 3));
     }
 
     private void setupRecyclerView() {
@@ -284,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
-        // 适配器点击事件
+        // ★ 点击选中（必须设置）
         photoAdapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             photoAdapter.notifyItemChanged(position);
@@ -303,7 +300,6 @@ public class MainActivity extends AppCompatActivity {
         btnSyncAll.setOnClickListener(v -> syncAllToCloud());
     }
 
-    // 上传选中的文件到云端
     private void uploadSelected() {
         if (webdavClient == null) {
             Toast.makeText(this, "请先连接 WebDAV", Toast.LENGTH_SHORT).show();
@@ -343,6 +339,8 @@ public class MainActivity extends AppCompatActivity {
             mainHandler.post(() -> {
                 Toast.makeText(MainActivity.this, "上传完成: 成功 " + finalSuccess + ", 失败 " + finalFail, Toast.LENGTH_LONG).show();
                 loadRemoteFileList();
+                if (isPhotoView) loadLocalPhotos();
+                else loadAllFiles();
                 // 清除选中
                 if (isPhotoView) {
                     for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) item.isSelected = false;
@@ -356,7 +354,6 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    // 删除选中的本地文件
     private void deleteSelectedLocal() {
         List<File> selectedFiles = new ArrayList<>();
         if (isPhotoView) {
@@ -396,7 +393,6 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    // 同步全部文件到云端（增量）
     private void syncAllToCloud() {
         if (webdavClient == null) {
             Toast.makeText(this, "请先连接 WebDAV", Toast.LENGTH_SHORT).show();
@@ -407,14 +403,12 @@ public class MainActivity extends AppCompatActivity {
 
         Toast.makeText(this, "开始同步全部文件...", Toast.LENGTH_SHORT).show();
         new Thread(() -> {
-            // 获取远程文件列表
             List<String> remoteFiles = webdavClient.listDirectory(finalRemoteDir);
             Set<String> remoteSet = new HashSet<>();
             for (String f : remoteFiles) {
                 if (!f.endsWith("/")) remoteSet.add(f);
             }
 
-            // 扫描本地文件（根据当前视图类型）
             List<File> localFiles = new ArrayList<>();
             if (isPhotoView) {
                 for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
