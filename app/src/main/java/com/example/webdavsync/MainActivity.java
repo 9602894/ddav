@@ -280,6 +280,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
+        // ★ 点击选中
         photoAdapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             photoAdapter.notifyItemChanged(position);
