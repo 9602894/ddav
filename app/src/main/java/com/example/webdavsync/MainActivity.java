@@ -44,12 +44,13 @@ public class MainActivity extends AppCompatActivity {
 
     private PhotoAdapter photoAdapter;
     private AllFilesAdapter allFilesAdapter;
-    private boolean isPhotoView = true;
+    private boolean isPhotoView = true; // 当前为本地相册
 
     private WebDAVClient webdavClient;
     private SharedPreferences prefs;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private Set<String> remoteFileNames = new HashSet<>();
+    private String currentConnectionName = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,7 +71,7 @@ public class MainActivity extends AppCompatActivity {
 
         setupRecyclerView();
         loadCurrentConnection();
-        showLocalPhotos();
+        showLocalPhotos(); // 默认显示本地相册
         setupListeners();
     }
 
@@ -107,25 +108,25 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadCurrentConnection() {
-        // 从 SharedPreferences 读取当前连接的配置名
-        String configName = prefs.getString("current_config", "");
-        if (!configName.isEmpty()) {
-            String server = prefs.getString("config_" + configName + "_server", "");
-            String username = prefs.getString("config_" + configName + "_username", "");
-            String password = prefs.getString("config_" + configName + "_password", "");
+        // 读取当前连接配置
+        currentConnectionName = prefs.getString("current_connection", "");
+        if (!currentConnectionName.isEmpty()) {
+            String server = prefs.getString("conn_" + currentConnectionName + "_server", "");
+            String username = prefs.getString("conn_" + currentConnectionName + "_username", "");
+            String password = prefs.getString("conn_" + currentConnectionName + "_password", "");
             if (!server.isEmpty()) {
                 webdavClient = new WebDAVClient(server, username, password);
                 WebDAVClientHolder.setClient(webdavClient);
-                tvConnectionStatus.setText("✅ 已连接: " + configName);
-                // 后台测试连接
+                tvConnectionStatus.setText("🔗 " + server);
                 new Thread(() -> {
                     boolean ok = webdavClient.testConnection();
                     mainHandler.post(() -> {
                         if (ok) {
+                            tvConnectionStatus.setText("✅ 已连接: " + currentConnectionName);
                             WebDAVClient.updateOkHttpClient(username, password);
                             loadRemoteFileList();
                         } else {
-                            tvConnectionStatus.setText("⚠️ 连接失效: " + configName);
+                            tvConnectionStatus.setText("⚠️ 连接失败: " + currentConnectionName);
                         }
                     });
                 }).start();
@@ -146,10 +147,12 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             mainHandler.post(() -> {
+                // 更新两个适配器的云端标记
                 for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
                 }
                 photoAdapter.notifyDataSetChanged();
+
                 for (AllFilesAdapter.FileItem item : allFilesAdapter.getItems()) {
                     item.isOnCloud = remoteFileNames.contains(item.name);
                 }
@@ -159,11 +162,79 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadLocalPhotos() {
-        // ... 与之前相同，略 ...
+        tvItemCount.setText("加载中...");
+        new Thread(() -> {
+            List<PhotoAdapter.PhotoItem> items = new ArrayList<>();
+            String[] projection = {MediaStore.Images.Media.DATA, MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.DATE_MODIFIED};
+            Cursor cursor = getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection, null, null, MediaStore.Images.Media.DATE_MODIFIED + " DESC");
+            if (cursor != null) {
+                int dataIdx = cursor.getColumnIndex(MediaStore.Images.Media.DATA);
+                int nameIdx = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME);
+                int dateIdx = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED);
+                while (cursor.moveToNext()) {
+                    String path = cursor.getString(dataIdx);
+                    String name = cursor.getString(nameIdx);
+                    long date = cursor.getLong(dateIdx);
+                    if (path != null) {
+                        File file = new File(path);
+                        if (file.exists()) {
+                            PhotoAdapter.PhotoItem item = new PhotoAdapter.PhotoItem(name);
+                            item.file = file;
+                            item.dateModified = date;
+                            item.isOnCloud = remoteFileNames.contains(name);
+                            item.displayName = name;
+                            String ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
+                            item.isVideo = ext.matches("mp4|3gp|avi|mkv|mov|webm");
+                            items.add(item);
+                        }
+                    }
+                }
+                cursor.close();
+            }
+            final List<PhotoAdapter.PhotoItem> finalItems = items;
+            mainHandler.post(() -> {
+                photoAdapter.setItems(finalItems);
+                tvItemCount.setText(finalItems.size() + " 张");
+            });
+        }).start();
     }
 
     private void loadAllFiles() {
-        // ... 与之前相同，略 ...
+        tvItemCount.setText("加载中...");
+        new Thread(() -> {
+            List<AllFilesAdapter.FileItem> items = new ArrayList<>();
+            String[] projection = {MediaStore.Files.FileColumns.DATA, MediaStore.Files.FileColumns.DISPLAY_NAME, MediaStore.Files.FileColumns.DATE_MODIFIED};
+            Cursor cursor = getContentResolver().query(MediaStore.Files.getContentUri("external"),
+                    projection, null, null, MediaStore.Files.FileColumns.DATE_MODIFIED + " DESC");
+            if (cursor != null) {
+                int dataIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA);
+                int nameIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME);
+                int dateIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED);
+                while (cursor.moveToNext()) {
+                    String path = cursor.getString(dataIdx);
+                    String name = cursor.getString(nameIdx);
+                    long date = cursor.getLong(dateIdx);
+                    if (path != null) {
+                        File file = new File(path);
+                        if (file.exists()) {
+                            AllFilesAdapter.FileItem item = new AllFilesAdapter.FileItem(name);
+                            item.file = file;
+                            item.dateModified = date;
+                            item.isOnCloud = remoteFileNames.contains(name);
+                            item.displayName = name;
+                            items.add(item);
+                        }
+                    }
+                }
+                cursor.close();
+            }
+            final List<AllFilesAdapter.FileItem> finalItems = items;
+            mainHandler.post(() -> {
+                allFilesAdapter.setItems(finalItems);
+                tvItemCount.setText(finalItems.size() + " 个");
+            });
+        }).start();
     }
 
     private void setupListeners() {
@@ -179,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             } else if (id == R.id.nav_cloud_photos || id == R.id.nav_cloud_all) {
                 if (webdavClient == null) {
-                    Toast.makeText(this, "请先在设置中连接", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "请先配置并连接 WebDAV", Toast.LENGTH_SHORT).show();
                     return false;
                 }
                 Intent intent = new Intent(this, CloudActivity.class);
@@ -190,6 +261,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
+        // 适配器点击事件
         photoAdapter.setOnItemClickListener((item, position) -> {
             item.isSelected = !item.isSelected;
             photoAdapter.notifyItemChanged(position);
@@ -204,7 +276,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 从设置返回后重新加载连接
         loadCurrentConnection();
         if (isPhotoView) loadLocalPhotos();
         else loadAllFiles();
