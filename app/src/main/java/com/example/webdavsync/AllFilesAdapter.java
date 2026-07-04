@@ -72,7 +72,6 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.cardView.setCardElevation(2f);
         }
 
-        // 云朵标记
         if (showCloudBadge && item.isOnCloud) {
             holder.tvCloudBadge.setVisibility(View.VISIBLE);
             holder.tvCloudBadge.setText("☁️");
@@ -82,7 +81,6 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
             holder.tvCloudBadge.setVisibility(View.GONE);
         }
 
-        // 手机标记
         if (showLocalBadge && item.isOnLocal) {
             holder.tvLocalBadge.setVisibility(View.VISIBLE);
             holder.tvLocalBadge.setText("📱");
@@ -93,9 +91,7 @@ public class AllFilesAdapter extends RecyclerView.Adapter<AllFilesAdapter.ViewHo
         }
 
         holder.ivVideoBadge.setVisibility(View.GONE);
-
         holder.tvName.setText(item.displayName);
-        holder.tvName.setVisibility(View.VISIBLE);
 
         String ext = "";
         if (item.name.contains(".")) {
