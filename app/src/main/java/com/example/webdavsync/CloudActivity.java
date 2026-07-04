@@ -25,15 +25,13 @@ public class CloudActivity extends AppCompatActivity {
     private Button btnDownload, btnUp, btnDeleteCloud;
     private ImageView ivBack;
 
-    private PhotoAdapter photoAdapter;      // 用于相册
-    private AllFilesAdapter allFilesAdapter; // 用于全部文件
-    private RecyclerView.Adapter currentAdapter;
-    private boolean isPhotoView = true;      // 默认相册
-
-    private WebDAVClient client;
+    private PhotoAdapter photoAdapter;
+    private AllFilesAdapter allFilesAdapter;
     private String currentPath = "";
     private Handler mainHandler = new Handler(Looper.getMainLooper());
     private List<String> localFileNames = new ArrayList<>();
+    private WebDAVClient client;
+    private String type; // "photo" 或 "all"
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,16 +47,15 @@ public class CloudActivity extends AppCompatActivity {
         btnDeleteCloud = findViewById(R.id.btn_delete_cloud);
         ivBack = findViewById(R.id.iv_back);
 
+        type = getIntent().getStringExtra("type");
+        if (type == null) type = "photo";
+
         client = WebDAVClientHolder.getClient();
         if (client == null) {
             Toast.makeText(this, "请先在主界面连接服务器", Toast.LENGTH_LONG).show();
             finish();
             return;
         }
-
-        // 获取类型
-        String type = getIntent().getStringExtra("type");
-        isPhotoView = !"all".equals(type); // 默认 photo
 
         WebDAVClient.updateOkHttpClient(
                 client.getUsername() != null ? client.getUsername() : "",
@@ -68,12 +65,12 @@ public class CloudActivity extends AppCompatActivity {
         collectLocalFiles();
 
         rvCloud.setLayoutManager(new GridLayoutManager(this, 3));
-        if (isPhotoView) {
+
+        if (type.equals("photo")) {
             photoAdapter = new PhotoAdapter(this);
             photoAdapter.setCloudView(true);
             photoAdapter.setShowLocalBadge(true);
-            currentAdapter = photoAdapter;
-            // 设置点击监听
+            rvCloud.setAdapter(photoAdapter);
             photoAdapter.setOnItemClickListener((item, position) -> {
                 if (item.name.endsWith("/")) {
                     String subPath = item.name.substring(0, item.name.length() - 1);
@@ -89,7 +86,7 @@ public class CloudActivity extends AppCompatActivity {
             allFilesAdapter = new AllFilesAdapter(this);
             allFilesAdapter.setCloudView(true);
             allFilesAdapter.setShowLocalBadge(true);
-            currentAdapter = allFilesAdapter;
+            rvCloud.setAdapter(allFilesAdapter);
             allFilesAdapter.setOnItemClickListener((item, position) -> {
                 if (item.name.endsWith("/")) {
                     String subPath = item.name.substring(0, item.name.length() - 1);
@@ -102,7 +99,6 @@ public class CloudActivity extends AppCompatActivity {
                 }
             });
         }
-        rvCloud.setAdapter(currentAdapter);
 
         loadDirectory("");
 
@@ -147,7 +143,7 @@ public class CloudActivity extends AppCompatActivity {
         new Thread(() -> {
             List<String> items = client.listDirectory(currentPath);
             mainHandler.post(() -> {
-                if (isPhotoView) {
+                if (type.equals("photo")) {
                     List<PhotoAdapter.PhotoItem> list = new ArrayList<>();
                     if (items != null && !items.isEmpty()) {
                         boolean hasError = false;
@@ -171,7 +167,7 @@ public class CloudActivity extends AppCompatActivity {
                                     fi.isVideo = false;
                                     list.add(fi);
                                 } else {
-                                    // 仅当是图片或视频时才添加
+                                    // 仅图片/视频
                                     String ext = item.substring(item.lastIndexOf('.') + 1).toLowerCase();
                                     if (ext.matches("jpg|jpeg|png|gif|bmp|webp|mp4|3gp|avi|mkv|mov|webm")) {
                                         PhotoAdapter.PhotoItem fi = new PhotoAdapter.PhotoItem(item);
@@ -194,6 +190,7 @@ public class CloudActivity extends AppCompatActivity {
                         tvCloudCount.setText("空目录");
                     }
                     photoAdapter.setItems(list);
+                    updateSelectedCount();
                 } else {
                     // 全部文件
                     List<AllFilesAdapter.FileItem> list = new ArrayList<>();
@@ -208,16 +205,23 @@ public class CloudActivity extends AppCompatActivity {
                         }
                         if (!hasError) {
                             for (String item : items) {
-                                AllFilesAdapter.FileItem fi = new AllFilesAdapter.FileItem(item);
-                                fi.name = item;
-                                fi.displayName = item;
-                                fi.isOnCloud = true;
-                                fi.isOnLocal = !item.endsWith("/") && localFileNames.contains(item);
-                                if (!item.endsWith("/")) {
-                                    String remotePath = currentPath.isEmpty() ? item : currentPath + "/" + item;
-                                    // 不需要远程URL，因为没有缩略图
+                                if (item.endsWith("/")) {
+                                    AllFilesAdapter.FileItem fi = new AllFilesAdapter.FileItem(item);
+                                    fi.name = item;
+                                    fi.displayName = item;
+                                    fi.isOnCloud = true;
+                                    fi.isOnLocal = false;
+                                    list.add(fi);
+                                } else {
+                                    AllFilesAdapter.FileItem fi = new AllFilesAdapter.FileItem(item);
+                                    fi.name = item;
+                                    fi.displayName = item;
+                                    fi.isOnCloud = true;
+                                    fi.isOnLocal = localFileNames.contains(item);
+                                    fi.file = null; // 无本地文件
+                                    fi.dateModified = 0;
+                                    list.add(fi);
                                 }
-                                list.add(fi);
                             }
                             Collections.sort(list, (a, b) -> a.name.compareToIgnoreCase(b.name));
                             tvCloudCount.setText(list.size() + " 个项目");
@@ -226,15 +230,15 @@ public class CloudActivity extends AppCompatActivity {
                         tvCloudCount.setText("空目录");
                     }
                     allFilesAdapter.setItems(list);
+                    updateSelectedCount();
                 }
-                updateSelectedCount();
             });
         }).start();
     }
 
     private void updateSelectedCount() {
         int count = 0;
-        if (isPhotoView) {
+        if (type.equals("photo")) {
             for (PhotoAdapter.PhotoItem item : photoAdapter.getItems()) {
                 if (item.isSelected) count++;
             }
@@ -247,7 +251,7 @@ public class CloudActivity extends AppCompatActivity {
     }
 
     private void downloadSelected() {
-        // 实现略，与之前类似，但需根据 currentAdapter 获取选中的文件列表
+        // 实现略，与之前相同，但需根据 type 获取选中列表
         // ...
     }
 
