@@ -24,12 +24,12 @@ public class SettingsActivity extends AppCompatActivity {
     private Button btnTest, btnSave, btnDelete, btnConnect;
     private TextView tvStatus;
     private ListView lvConfigs;
+
     private SharedPreferences prefs;
     private Handler mainHandler = new Handler(Looper.getMainLooper());
-
-    private ArrayAdapter<String> configAdapter;
     private List<String> configNames = new ArrayList<>();
-    private String selectedConfigName = null;
+    private ArrayAdapter<String> adapter;
+    private String selectedConfig = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,16 +48,17 @@ public class SettingsActivity extends AppCompatActivity {
         lvConfigs = findViewById(R.id.lv_configs);
 
         prefs = getSharedPreferences("webdav_prefs", MODE_PRIVATE);
+
         loadConfigList();
 
         lvConfigs.setOnItemClickListener((parent, view, position, id) -> {
-            selectedConfigName = configNames.get(position);
-            loadConfigToForm(selectedConfigName);
+            selectedConfig = configNames.get(position);
+            loadConfigToForm(selectedConfig);
         });
 
-        btnTest.setOnClickListener(v -> testConnection());
         btnSave.setOnClickListener(v -> saveConfig());
         btnDelete.setOnClickListener(v -> deleteConfig());
+        btnTest.setOnClickListener(v -> testConnection());
         btnConnect.setOnClickListener(v -> connectConfig());
     }
 
@@ -65,70 +66,74 @@ public class SettingsActivity extends AppCompatActivity {
         configNames.clear();
         Set<String> keySet = prefs.getStringSet("config_keys", new HashSet<>());
         configNames.addAll(keySet);
-        if (configAdapter == null) {
-            configAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_single_choice, configNames);
-            lvConfigs.setAdapter(configAdapter);
+        if (adapter == null) {
+            adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_single_choice, configNames);
+            lvConfigs.setAdapter(adapter);
             lvConfigs.setChoiceMode(ListView.CHOICE_MODE_SINGLE);
         } else {
-            configAdapter.notifyDataSetChanged();
+            adapter.notifyDataSetChanged();
         }
     }
 
-    private void loadConfigToForm(String key) {
-        String server = prefs.getString("config_" + key + "_server", "");
-        String username = prefs.getString("config_" + key + "_username", "");
-        String password = prefs.getString("config_" + key + "_password", "");
-        etConfigName.setText(key);
+    private void loadConfigToForm(String name) {
+        String server = prefs.getString("conn_" + name + "_server", "");
+        String user = prefs.getString("conn_" + name + "_username", "");
+        String pass = prefs.getString("conn_" + name + "_password", "");
+        etConfigName.setText(name);
         etServer.setText(server);
-        etUsername.setText(username);
-        etPassword.setText(password);
-        selectedConfigName = key;
+        etUsername.setText(user);
+        etPassword.setText(pass);
     }
 
     private void saveConfig() {
         String name = etConfigName.getText().toString().trim();
         String server = etServer.getText().toString().trim();
-        String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+        String user = etUsername.getText().toString().trim();
+        String pass = etPassword.getText().toString().trim();
 
         if (name.isEmpty() || server.isEmpty()) {
-            tvStatus.setText("配置名称和服务器地址不能为空");
+            tvStatus.setText("名称和服务器地址不能为空");
             return;
         }
 
         SharedPreferences.Editor editor = prefs.edit();
-        editor.putString("config_" + name + "_server", server);
-        editor.putString("config_" + name + "_username", username);
-        editor.putString("config_" + name + "_password", password);
+        editor.putString("conn_" + name + "_server", server);
+        editor.putString("conn_" + name + "_username", user);
+        editor.putString("conn_" + name + "_password", pass);
         Set<String> keySet = prefs.getStringSet("config_keys", new HashSet<>());
         keySet.add(name);
         editor.putStringSet("config_keys", keySet);
         editor.apply();
 
-        tvStatus.setText("✅ 配置已保存: " + name);
+        tvStatus.setText("配置已保存");
         Toast.makeText(this, "配置已保存", Toast.LENGTH_SHORT).show();
         loadConfigList();
-        selectedConfigName = name;
+        selectedConfig = name;
     }
 
     private void deleteConfig() {
-        if (selectedConfigName == null) {
-            tvStatus.setText("请先选择要删除的配置");
+        if (selectedConfig == null) {
+            tvStatus.setText("请先选择一个配置");
             return;
         }
         SharedPreferences.Editor editor = prefs.edit();
-        editor.remove("config_" + selectedConfigName + "_server");
-        editor.remove("config_" + selectedConfigName + "_username");
-        editor.remove("config_" + selectedConfigName + "_password");
+        editor.remove("conn_" + selectedConfig + "_server");
+        editor.remove("conn_" + selectedConfig + "_username");
+        editor.remove("conn_" + selectedConfig + "_password");
         Set<String> keySet = prefs.getStringSet("config_keys", new HashSet<>());
-        keySet.remove(selectedConfigName);
+        keySet.remove(selectedConfig);
         editor.putStringSet("config_keys", keySet);
+        // 如果当前连接的是这个配置，清除当前连接
+        String current = prefs.getString("current_connection", "");
+        if (current.equals(selectedConfig)) {
+            editor.remove("current_connection");
+        }
         editor.apply();
 
         tvStatus.setText("配置已删除");
         Toast.makeText(this, "配置已删除", Toast.LENGTH_SHORT).show();
         loadConfigList();
-        selectedConfigName = null;
+        selectedConfig = null;
         etConfigName.setText("");
         etServer.setText("");
         etUsername.setText("");
@@ -137,27 +142,27 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void testConnection() {
         String server = etServer.getText().toString().trim();
-        String username = etUsername.getText().toString().trim();
-        String password = etPassword.getText().toString().trim();
+        String user = etUsername.getText().toString().trim();
+        String pass = etPassword.getText().toString().trim();
 
         if (server.isEmpty()) {
             tvStatus.setText("请输入服务器地址");
             return;
         }
 
-        tvStatus.setText("测试连接中...");
+        tvStatus.setText("测试中...");
         btnTest.setEnabled(false);
 
         new Thread(() -> {
-            WebDAVClient client = new WebDAVClient(server, username, password);
+            WebDAVClient client = new WebDAVClient(server, user, pass);
             boolean ok = client.testConnection();
             mainHandler.post(() -> {
                 btnTest.setEnabled(true);
                 if (ok) {
-                    tvStatus.setText("✅ 连接成功！");
+                    tvStatus.setText("✅ 连接成功");
                     Toast.makeText(SettingsActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
                 } else {
-                    tvStatus.setText("❌ 连接失败，请检查配置");
+                    tvStatus.setText("❌ 连接失败");
                     Toast.makeText(SettingsActivity.this, "连接失败", Toast.LENGTH_SHORT).show();
                 }
             });
@@ -165,31 +170,32 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void connectConfig() {
-        if (selectedConfigName == null) {
+        if (selectedConfig == null) {
             tvStatus.setText("请先选择配置");
             return;
         }
-
-        String server = prefs.getString("config_" + selectedConfigName + "_server", "");
-        String username = prefs.getString("config_" + selectedConfigName + "_username", "");
-        String password = prefs.getString("config_" + selectedConfigName + "_password", "");
+        String server = prefs.getString("conn_" + selectedConfig + "_server", "");
+        String user = prefs.getString("conn_" + selectedConfig + "_username", "");
+        String pass = prefs.getString("conn_" + selectedConfig + "_password", "");
 
         if (server.isEmpty()) {
             tvStatus.setText("配置不完整");
             return;
         }
 
-        tvStatus.setText("正在连接...");
+        tvStatus.setText("连接中...");
         new Thread(() -> {
-            WebDAVClient client = new WebDAVClient(server, username, password);
+            WebDAVClient client = new WebDAVClient(server, user, pass);
             boolean ok = client.testConnection();
             mainHandler.post(() -> {
                 if (ok) {
+                    // 保存为当前连接
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("current_connection", selectedConfig);
+                    editor.apply();
                     WebDAVClientHolder.setClient(client);
-                    // 保存当前连接配置名
-                    prefs.edit().putString("current_config", selectedConfigName).apply();
-                    tvStatus.setText("✅ 已连接: " + selectedConfigName);
-                    Toast.makeText(SettingsActivity.this, "已连接到 " + selectedConfigName, Toast.LENGTH_LONG).show();
+                    tvStatus.setText("✅ 已连接到 " + selectedConfig);
+                    Toast.makeText(SettingsActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
                     finish(); // 返回主界面
                 } else {
                     tvStatus.setText("❌ 连接失败");
